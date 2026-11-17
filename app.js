@@ -8,9 +8,11 @@
 const ORIGINAL = { width: 181, height: 205 };
 const CANVAS = { width: 181, height: 235 };
 const TAU = Math.PI * 2;
+// Nom historique du fichier : le calque « mouth » contient en réalité l’œil unique.
+const EYE_ASSET = 'mouth';
 const imageNames = [
   'leg-left', 'leg-right', 'body', 'puff-left', 'puff-top', 'puff-right',
-  'mouth', 'droplet-left', 'droplet-right',
+  EYE_ASSET, 'droplet-left', 'droplet-right',
   'spark-1', 'spark-2', 'spark-3', 'spark-4',
 ];
 
@@ -18,6 +20,7 @@ const canvas = document.querySelector('#mascot');
 const context = canvas.getContext('2d');
 const playButton = document.querySelector('#play-toggle');
 const layersButton = document.querySelector('#layers-toggle');
+const blinkButton = document.querySelector('#blink-trigger');
 const intensityInput = document.querySelector('#intensity');
 const intensityValue = document.querySelector('#intensity-value');
 const status = document.querySelector('#status');
@@ -36,6 +39,7 @@ const motion = {
 };
 
 const assets = new Map();
+const blinkController = new EyeBlinkController();
 
 function loadImage(name) {
   return new Promise((resolve, reject) => {
@@ -67,6 +71,27 @@ function drawImageLayer(name, options = {}) {
   context.scale(sx, sy);
   context.drawImage(image, -x, -y, ORIGINAL.width, ORIGINAL.height);
   context.restore();
+}
+
+/**
+ * Le visage original possède un seul œil blanc, compressé vers une fine fente.
+ * Aucun second œil ou nouveau dessin n'est ajouté.
+ */
+function drawEye(seconds, split, power) {
+  const closure = blinkController.closureAt(seconds) * Math.min(1, power);
+  const gazeX = sine(seconds, 9.8, 0.4) * 0.48 * power;
+  const gazeY = sine(seconds, 7.3, 1.1) * 0.25 * power;
+  const eyeTwitch = sine(seconds, 5.9) * 0.004 * power;
+
+  // Le calque lui-même se comprime verticalement : l’œil devient une fine fente,
+  // sans rectangle ou ellipse ajoutée et sans modifier les autres volumes du nuage.
+  drawImageLayer(EYE_ASSET, {
+    x: 102, y: 133,
+    dx: gazeX,
+    dy: gazeY + 15 * split,
+    sx: 1 + eyeTwitch,
+    sy: 1 - closure * 0.93,
+  });
 }
 
 function drawShadow(bob, split) {
@@ -126,10 +151,7 @@ function drawCharacter(seconds) {
     x: 132, y: 86, dx: 24 * split + sine(s, 4.0, 2.5) * 0.55 * power,
     dy: -2 * split + sine(s, 3.5, 0.7) * 0.34 * power,
   });
-  drawImageLayer('mouth', {
-    x: 102, y: 136, dy: 15 * split + sine(s, 4.8, 1.2) * 0.45 * power,
-    sx: 1 + sine(s, 5.9) * 0.005 * power,
-  });
+  drawEye(s, split, power);
 
   // Les gouttelettes flottent à une fréquence différente de celle du corps.
   drawImageLayer('droplet-left', {
@@ -185,6 +207,12 @@ playButton.addEventListener('click', () => {
   playButton.textContent = motion.playing ? 'Mettre en pause' : 'Reprendre';
   playButton.setAttribute('aria-pressed', String(!motion.playing));
   status.textContent = motion.playing ? 'Idle · animé' : 'Idle · en pause';
+});
+
+blinkButton.addEventListener('click', () => {
+  if (motion.playing && !motion.reducedMotion) {
+    blinkController.blinkNow(motion.elapsed);
+  }
 });
 
 layersButton.addEventListener('click', () => {
