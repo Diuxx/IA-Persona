@@ -1,0 +1,93 @@
+{
+  "body": {
+    "file": "body.png",
+    "x": 19.75,
+    "y": 28.75,
+    "width": 153.5,
+    "height": 144.5
+  },
+  "droplet-left": {
+    "file": "droplet-left.png",
+    "x": 11.75,
+    "y": 22.75,
+    "width": 45.5,
+    "height": 32.5
+  },
+  "droplet-right": {
+    "file": "droplet-right.png",
+    "x": 129.75,
+    "y": 21.75,
+    "width": 35.5,
+    "height": 31.5
+  },
+  "leg-left": {
+    "file": "leg-left.png",
+    "x": 56.75,
+    "y": 152.75,
+    "width": 32.5,
+    "height": 44.5
+  },
+  "leg-right": {
+    "file": "leg-right.png",
+    "x": 108.75,
+    "y": 150.75,
+    "width": 33.5,
+    "height": 44.5
+  },
+  "mouth": {
+    "file": "mouth.png",
+    "x": 62.75,
+    "y": 117.75,
+    "width": 77.5,
+    "height": 38.5
+  },
+  "puff-left": {
+    "file": "puff-left.png",
+    "x": 23.75,
+    "y": 52.75,
+    "width": 54.5,
+    "height": 69.5
+  },
+  "puff-right": {
+    "file": "puff-right.png",
+    "x": 109.75,
+    "y": 68.75,
+    "width": 49.5,
+    "height": 37.5
+  },
+  "puff-top": {
+    "file": "puff-top.png",
+    "x": 64.75,
+    "y": 31.75,
+    "width": 67.5,
+    "height": 76.5
+  },
+  "spark-1": {
+    "file": "spark-1.png",
+    "x": 43.75,
+    "y": 2.75,
+    "width": 9.5,
+    "height": 8.5
+  },
+  "spark-2": {
+    "file": "spark-2.png",
+    "x": 45.75,
+    "y": 39.75,
+    "width": 8.5,
+    "height": 9.5
+  },
+  "spark-3": {
+    "file": "spark-3.png",
+    "x": 131.75,
+    "y": 39.75,
+    "width": 7.5,
+    "height": 7.5
+  },
+  "spark-4": {
+    "file": "spark-4.png",
+    "x": 137.75,
+    "y": 42.75,
+    "width": 11.5,
+    "height": 11.5
+  }
+}

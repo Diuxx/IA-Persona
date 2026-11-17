@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="dark" />
+  <title>Nuage — idle animé</title>
+  <link rel="stylesheet" href="./styles.css" />
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <main class="page">
+    <header class="site-header">
+      <div class="brand"><span class="brand-mark" aria-hidden="true"></span> NUAGE <span class="brand-separator">/</span> animation lab</div>
+      <span class="version">Prototype 01</span>
+    </header>
+
+    <div class="layout">
+      <section class="preview-card" aria-label="Prévisualisation du nuage animé">
+        <div class="card-topline">
+          <div class="live"><span class="live-dot"></span> <span id="status" role="status">Chargement…</span></div>
+          <span class="mono">181 × 205 · sprites PNG</span>
+        </div>
+        <div class="stage" id="stage">
+          <canvas id="mascot" width="543" height="705" role="img" aria-label="Mascotte nuage noir flottant, en animation idle"></canvas>
+          <div class="stage-subtitle">UN PEU VÉNÈRE. TOUJOURS LÀ.</div>
+        </div>
+        <p class="error" id="error-message" aria-live="polite"></p>
+      </section>
+
+      <aside class="controls-card">
+        <p class="eyebrow">ANIMATION / IDLE</p>
+        <h1>Un nuage<br><span>vivant.</span></h1>
+        <p class="intro">Le personnage flotte en continu, respire lentement et laisse ses gouttelettes suivre leur propre mouvement.</p>
+        <div class="control-group">
+          <label for="intensity"><span>Intensité du mouvement</span><output id="intensity-value" for="intensity">100 %</output></label>
+          <input id="intensity" type="range" min="0" max="150" step="5" value="100" />
+          <div class="range-ends"><span>Discret</span><span>Expressif</span></div>
+        </div>
+        <div class="button-group">
+          <button id="play-toggle" type="button">Mettre en pause</button>
+          <button id="layers-toggle" type="button" class="secondary">Voir les calques</button>
+        </div>
+        <p class="hint">« Voir les calques » écarte doucement les parties découpées pour inspecter la structure du personnage.</p>
+        <div class="divider"></div>
+        <p class="eyebrow">CALQUES DÉCOUPÉS</p>
+        <div class="layer-tags" aria-label="Éléments découpés">
+          <span>Corps</span><span>3 volumes</span><span>Sourire</span><span>2 pattes</span><span>2 gouttelettes</span><span>4 particules</span>
+        </div>
+        <p class="footnote">Animation en Canvas 2D natif. Aucun framework ni dépendance externe.</p>
+      </aside>
+    </div>
+    <footer>PNG source fourni par l'utilisateur · animation expérimentale · utilisation locale</footer>
+  </main>
+</body>
+</html>
