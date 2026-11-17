@@ -20,7 +20,8 @@ Puis accéder à `http://localhost:8000`.
 - `styles.css` : présentation responsive.
 - `app.js` : chargement et animation continue des calques sur Canvas 2D.
 - `eye-blink-controller.js` : clignement naturel de l’œil unique, indépendant de la lévitation et testé sans navigateur.
-- `hit-controller.js` : séquence de réaction au clic (compression, étirement, œil surpris et retour à l’idle) avec interpolation et tests.
+- `hit-controller.js` : chronologie exacte des huit images de référence, au rythme de 120 ms/image, avec fondus d’entrée et de sortie et tests.
+- `assets/hit-explosion-sprite.png` : huit images exactes de l’animation validée, extraites sur fond transparent pour le Canvas.
 - `assets/*.png` : 13 couches PNG transparentes, **alignées sur le repère d'origine**. Elles ont toutes la même taille (724 × 820 px, source multipliée par quatre). Cette méthode évite d'avoir à repositionner chaque couche au pixel près.
 - `assets/cropped/*.png` : les mêmes calques, recadrés pour les réutiliser dans un autre moteur.
 - `assets/manifest.json` : position et dimensions de chaque calque recadré, exprimées en pixels de l'image d'origine.
@@ -55,6 +56,10 @@ Le réglage de réduction des mouvements du système désactive l'animation idle
 
 ## Interaction « Hit »
 
-Cliquez sur les pixels visibles du nuage (ou focalisez le Canvas puis appuyez sur Entrée/Espace). Une animation non interruptible de 1,15 seconde tasse la silhouette, étire son œil unique puis rassemble ses volumes, avant un retour fluide à l’idle. Les clics pendant la réaction sont ignorés. La pause et les préférences « réduire les animations » sont respectées. Le GIF fourni sert de référence visuelle : la réaction est construite à partir des calques existants et de formes Canvas, sans GIF rejoué.
+Cliquez sur les pixels visibles du nuage (ou focalisez le Canvas puis appuyez sur Entrée/Espace). Une animation de 0,96 seconde rejoue les huit images de la référence : impact, œil surpris, explosion des masses, retour à l’idle. Les clics pendant la réaction sont ignorés. La pause et les préférences « réduire les animations » sont respectées. Le GIF fourni sert de référence visuelle : la réaction utilise les images originales de la référence, au lieu de reproduire les poses par calcul. Le fond gris a été isolé pour préserver la transparence et l’apparence sur le Canvas.
 
 Tests : `node --test tests/*.test.cjs`.
+
+### Origine des images Hit
+
+Le sprite provient du GIF généré et validé dans cette conversation pour cette mascotte. Huit images de 437 × 439 pixels ont été redimensionnées en 250 × 251, détachées de leur fond gris puis assemblées horizontalement. Cette conversion entraîne de très légères différences aux contours, mais les poses sont celles du GIF validé.

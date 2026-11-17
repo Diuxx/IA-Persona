@@ -2,47 +2,54 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { HitController } = require('../hit-controller.js');
 
-test('une réaction commence au clic et revient à une pose neutre', () => {
+test('la réaction échantillonne exactement huit frames de 120 ms', () => {
   const hit = new HitController();
-  assert.equal(hit.poseAt(0).active, false);
   assert.equal(hit.trigger(2), true);
-  assert.equal(hit.poseAt(2).active, true);
-  assert.equal(hit.poseAt(3.15).active, false);
-  assert.equal(hit.poseAt(3.15).eyeOpen, 0);
+  assert.equal(hit.sampleAt(2).frame, 0);
+  assert.equal(hit.sampleAt(2.12).frame, 1);
+  assert.equal(hit.sampleAt(2.36).frame, 3);
+  assert.equal(hit.sampleAt(2.84).frame, 7);
+  assert.equal(hit.sampleAt(2.96).active, false);
 });
 
-test('le corps se tasse puis s’étire, et l’œil s’ouvre', () => {
-  const hit = new HitController();
-  hit.trigger(0);
-  assert.ok(hit.poseAt(0.115).squash > 0.95);
-  assert.ok(hit.poseAt(0.391).stretch > 0.95);
-  assert.ok(hit.poseAt(0.391).eyeOpen > 0.95);
-  assert.ok(hit.poseAt(0.598).scatter > 0.7);
-});
-
-test('le second clic ne relance pas une animation en cours', () => {
+test('le clic pendant la réaction est ignoré, puis une nouvelle réaction peut démarrer', () => {
   const hit = new HitController();
   assert.equal(hit.trigger(0), true);
-  assert.equal(hit.trigger(0.6), false);
-  assert.equal(hit.startedAt, 0);
-  assert.equal(hit.trigger(1.16), true);
+  assert.equal(hit.trigger(0.4), false);
+  assert.equal(hit.trigger(0.97), true);
 });
 
-test('les poses interpolées restent toujours dans la plage attendue', () => {
+test('les premières et dernières images se fondent avec l’idle', () => {
   const hit = new HitController();
-  hit.trigger(2);
-  for (let i = 0; i < 115; i++) {
-    const pose = hit.poseAt(2 + i / 100);
-    for (const value of [pose.squash, pose.stretch, pose.scatter, pose.eyeOpen]) {
-      assert.ok(value >= 0 && value <= 1);
-    }
+  hit.trigger(1);
+  assert.equal(hit.sampleAt(1).opacity, 0);
+  assert.equal(hit.sampleAt(1.2).opacity, 1);
+  assert.ok(hit.sampleAt(1.93).opacity < 1);
+});
+
+test('la transition entre deux images conserve des indices valides', () => {
+  const hit = new HitController();
+  hit.trigger(1);
+  for (let step = 0; step < 96; step += 1) {
+    const state = hit.sampleAt(1 + step / 100);
+    assert.ok(state.frame >= 0 && state.frame < 8);
+    assert.ok(state.nextFrame >= state.frame && state.nextFrame < 8);
+    assert.ok(state.blend >= 0 && state.blend <= 1);
+    assert.ok(state.opacity >= 0 && state.opacity <= 1);
   }
 });
 
-test('une configuration ou une activation invalide est rejetée', () => {
-  assert.throws(() => new HitController({ duration: 0 }), RangeError);
-  assert.throws(() => new HitController({ duration: Infinity }), RangeError);
+test('les paramètres invalides sont rejetés', () => {
+  assert.throws(() => new HitController({ frameCount: 1 }), RangeError);
+  assert.throws(() => new HitController({ frameDuration: 0 }), RangeError);
+  assert.throws(() => new HitController({ fadeIn: -1 }), RangeError);
+  assert.throws(() => new HitController({ fadeIn: 1, fadeOut: 1 }), RangeError);
+  assert.equal(new HitController().trigger(NaN), false);
+});
+
+// Contrôle des pauses : le contrôleur ne dépend que du temps d'animation transmis.
+test('une horloge qui ne progresse pas conserve exactement la même image', () => {
   const hit = new HitController();
-  assert.equal(hit.trigger(NaN), false);
-  assert.equal(hit.trigger(-1), false);
+  hit.trigger(0);
+  assert.deepEqual(hit.sampleAt(0.22), hit.sampleAt(0.22));
 });
