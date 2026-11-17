@@ -20,6 +20,7 @@ Puis accéder à `http://localhost:8000`.
 - `styles.css` : présentation responsive.
 - `app.js` : chargement et animation continue des calques sur Canvas 2D.
 - `eye-blink-controller.js` : clignement naturel de l’œil unique, indépendant de la lévitation et testé sans navigateur.
+- `hit-controller.js` : séquence de réaction au clic (compression, étirement, œil surpris et retour à l’idle) avec interpolation et tests.
 - `assets/*.png` : 13 couches PNG transparentes, **alignées sur le repère d'origine**. Elles ont toutes la même taille (724 × 820 px, source multipliée par quatre). Cette méthode évite d'avoir à repositionner chaque couche au pixel près.
 - `assets/cropped/*.png` : les mêmes calques, recadrés pour les réutiliser dans un autre moteur.
 - `assets/manifest.json` : position et dimensions de chaque calque recadré, exprimées en pixels de l'image d'origine.
@@ -51,3 +52,9 @@ La source est une capture **aplatie de seulement 181 × 205 pixels**. Le calque 
 La démo n'est pas encore connectée à Ollama et ne contient pas les états `thinking`, `listening` ou `speaking`.
 
 Le réglage de réduction des mouvements du système désactive l'animation idle automatiquement.
+
+## Interaction « Hit »
+
+Cliquez sur les pixels visibles du nuage (ou focalisez le Canvas puis appuyez sur Entrée/Espace). Une animation non interruptible de 1,15 seconde tasse la silhouette, étire son œil unique puis rassemble ses volumes, avant un retour fluide à l’idle. Les clics pendant la réaction sont ignorés. La pause et les préférences « réduire les animations » sont respectées. Le GIF fourni sert de référence visuelle : la réaction est construite à partir des calques existants et de formes Canvas, sans GIF rejoué.
+
+Tests : `node --test tests/*.test.cjs`.

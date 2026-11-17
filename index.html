@@ -7,13 +7,14 @@
   <title>Nuage — idle animé</title>
   <link rel="stylesheet" href="./styles.css" />
   <script src="./eye-blink-controller.js" defer></script>
+  <script src="./hit-controller.js" defer></script>
   <script src="./app.js" defer></script>
 </head>
 <body>
   <main class="page">
     <header class="site-header">
       <div class="brand"><span class="brand-mark" aria-hidden="true"></span> NUAGE <span class="brand-separator">/</span> animation lab</div>
-      <span class="version">Prototype 02</span>
+      <span class="version">Prototype 03</span>
     </header>
 
     <div class="layout">
@@ -23,7 +24,7 @@
           <span class="mono">181 × 205 · sprites PNG</span>
         </div>
         <div class="stage" id="stage">
-          <canvas id="mascot" width="543" height="705" role="img" aria-label="Mascotte nuage noir flottant, en animation idle"></canvas>
+          <canvas id="mascot" width="543" height="705" role="button" tabindex="0" aria-label="Cliquez sur le nuage pour lui faire une surprise. Appuyez sur Entrée ou Espace pour interagir"></canvas>
           <div class="stage-subtitle">UN PEU VÉNÈRE. TOUJOURS LÀ.</div>
         </div>
         <p class="error" id="error-message" aria-live="polite"></p>
@@ -32,7 +33,7 @@
       <aside class="controls-card">
         <p class="eyebrow">ANIMATION / IDLE</p>
         <h1>Un nuage<br><span>vivant.</span></h1>
-        <p class="intro">Le nuage flotte et respire. Son œil unique cligne naturellement, sans interrompre les autres mouvements.</p>
+        <p class="intro">Le nuage flotte, respire et cligne de son œil unique. Cliquez directement sur lui pour déclencher une réaction de surprise inspirée du mouvement « Hit ».</p>
         <div class="control-group">
           <label for="intensity"><span>Intensité du mouvement</span><output id="intensity-value" for="intensity">100 %</output></label>
           <input id="intensity" type="range" min="0" max="150" step="5" value="100" />

@@ -42,6 +42,8 @@ const motion = {
 
 const assets = new Map();
 const blinkController = new EyeBlinkController();
+const hitController = new HitController();
+let wasHitActive = false;
 
 function loadImage(name) {
   return new Promise((resolve, reject) => {
@@ -79,7 +81,7 @@ function drawImageLayer(name, options = {}) {
  * Le visage original possède un seul œil blanc, compressé vers une fine fente.
  * Aucun second œil ou nouveau dessin n'est ajouté.
  */
-function drawEye(seconds, split, power) {
+function drawEye(seconds, split, power, pose) {
   const closure = blinkController.closureAt(seconds) * Math.min(1, power);
   // Le regard suit discrètement le pointeur, sans remplacer les mouvements spontanés.
   const gazeX = sine(seconds, 9.8, 0.4) * 0.48 * power + motion.pointerX * 0.18;
@@ -88,6 +90,9 @@ function drawEye(seconds, split, power) {
 
   // Le calque lui-même se comprime verticalement : l’œil devient une fine fente,
   // sans rectangle ou ellipse ajoutée et sans modifier les autres volumes du nuage.
+  context.save();
+  context.globalAlpha = (1 - Math.min(1, pose.eyeOpen * 2.7)) *
+    (1 - Math.min(1, pose.squash));
   drawImageLayer(EYE_ASSET, {
     x: 102, y: 133,
     dx: gazeX,
@@ -95,6 +100,42 @@ function drawEye(seconds, split, power) {
     sx: 1 + eyeTwitch,
     sy: 1 - closure * 0.93,
   });
+  context.restore();
+  drawSurprisedEye(pose);
+}
+
+/** L'œil unique s'étire et s'ouvre, comme dans l'animation HIT de référence. */
+function drawSurprisedEye(pose) {
+  const alpha = Math.min(1, pose.eyeOpen * 2.7);
+  if (!alpha) return;
+
+  const radiusX = 18 + pose.eyeOpen * 9 - pose.stretch * 17;
+  const radiusY = 9 + pose.eyeOpen * 19 + pose.stretch * 37;
+  const centerX = 101;
+  const centerY = 127 - pose.stretch * 19;
+
+  context.save();
+  context.globalAlpha = alpha;
+  context.fillStyle = '#f8f8f5';
+  context.strokeStyle = '#030303';
+  context.lineWidth = 4;
+  context.beginPath();
+  context.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, TAU);
+  context.fill();
+  context.stroke();
+
+  context.fillStyle = '#070707';
+  context.beginPath();
+  context.ellipse(centerX + 1, centerY - radiusY * 0.09, 1.9, 3.5, 0, 0, TAU);
+  context.fill();
+
+  context.fillStyle = '#ffffff';
+  context.beginPath();
+  context.ellipse(centerX - radiusX * 0.45, centerY - radiusY * 0.4,
+    Math.max(1.5, radiusX * 0.11), Math.max(2, radiusY * 0.18),
+    -0.12, 0, TAU);
+  context.fill();
+  context.restore();
 }
 
 function drawShadow(bob, split) {
@@ -110,6 +151,7 @@ function drawShadow(bob, split) {
 
 function drawCharacter(seconds) {
   const s = seconds;
+  const pose = hitController.poseAt(seconds);
   const power = motion.reducedMotion ? 0 : motion.intensity;
   const split = motion.exploded;
   const bob = sine(s, 3.8) * 4.1 * power;
@@ -122,48 +164,52 @@ function drawCharacter(seconds) {
 
   context.save();
   // Le mouvement général est commun à toutes les pièces : pas de rupture de raccord.
-  context.translate(91 + motion.pointerX, 106 + bob + motion.pointerY);
+  context.translate(91 + motion.pointerX,
+    106 + bob + motion.pointerY + 9 * pose.squash + 6 * pose.stretch);
   context.rotate(sway);
-  context.scale(1 + breathe + microTwitch, 1 - breathe * 0.75 - microTwitch);
+  context.scale(
+    (1 + breathe + microTwitch) * (1 + 0.25 * pose.squash - 0.24 * pose.stretch),
+    (1 - breathe * 0.75 - microTwitch) * (1 - 0.33 * pose.squash + 0.16 * pose.stretch),
+  );
   context.translate(-91, -106);
 
   // Les pattes passent sous le corps, qui dissimule leurs points d'attache.
   drawImageLayer('leg-left', {
-    x: 68, y: 164, dx: -15 * split,
+    x: 68, y: 164, dx: -15 * split - 7 * pose.squash,
     dy: 20 * split + sine(s, 4.8, 1) * 0.7 * power,
     rotation: sine(s, 4.7, 0.4) * 0.018 * power,
   });
   drawImageLayer('leg-right', {
-    x: 125, y: 164, dx: 15 * split,
+    x: 125, y: 164, dx: 15 * split + 7 * pose.squash,
     dy: 20 * split + sine(s, 5.1, 2.2) * 0.7 * power,
     rotation: sine(s, 4.8, 1.7) * -0.018 * power,
   });
 
   drawImageLayer('body', { x: 96, y: 110 });
   drawImageLayer('puff-left', {
-    x: 51, y: 89, dx: -23 * split + sine(s, 3.55, 1.1) * 0.52 * power,
+    x: 51, y: 89, dx: -23 * split - 13 * pose.scatter + sine(s, 3.55, 1.1) * 0.52 * power,
     dy: -3 * split + sine(s, 3.8, 1.5) * 0.40 * power,
     sx: 1 + sine(s, 3.15, -0.6) * 0.006 * power,
   });
   drawImageLayer('puff-top', {
-    x: 98, y: 61, dy: -22 * split + sine(s, 3.15, 0.5) * 0.68 * power,
+    x: 98, y: 61, dy: -22 * split - 6 * pose.scatter + sine(s, 3.15, 0.5) * 0.68 * power,
     sx: 1 + sine(s, 3.1, 0.7) * 0.008 * power,
     sy: 1 + sine(s, 3.2, -0.5) * 0.009 * power,
   });
   drawImageLayer('puff-right', {
-    x: 132, y: 86, dx: 24 * split + sine(s, 4.0, 2.5) * 0.55 * power,
+    x: 132, y: 86, dx: 24 * split + 13 * pose.scatter + sine(s, 4.0, 2.5) * 0.55 * power,
     dy: -2 * split + sine(s, 3.5, 0.7) * 0.34 * power,
   });
-  drawEye(s, split, power);
+  drawEye(s, split, power, pose);
 
   // Les gouttelettes flottent à une fréquence différente de celle du corps.
   drawImageLayer('droplet-left', {
-    x: 34, y: 38, dx: -10 * split + sine(s, 4.6, 0.3) * 1.9 * power,
+    x: 34, y: 38, dx: -10 * split - 11 * pose.scatter + sine(s, 4.6, 0.3) * 1.9 * power,
     dy: -13 * split + sine(s, 3.35, 0.8) * 1.65 * power,
     rotation: sine(s, 5.8, 2) * 0.065 * power,
   });
   drawImageLayer('droplet-right', {
-    x: 146, y: 38, dx: 11 * split + sine(s, 5.1, 1.5) * 1.6 * power,
+    x: 146, y: 38, dx: 11 * split + 11 * pose.scatter + sine(s, 5.1, 1.5) * 1.6 * power,
     dy: -12 * split + sine(s, 3.9, 2) * 1.7 * power,
     rotation: sine(s, 5.5, 1) * -0.07 * power,
   });
@@ -177,8 +223,8 @@ function drawCharacter(seconds) {
   for (const [name, x, y, phase] of specks) {
     drawImageLayer(name, {
       x, y,
-      dx: (x < 90 ? -17 : 17) * split + sine(s, 6.1, phase) * 2.3 * power,
-      dy: -18 * split + sine(s, 4.5, phase) * 2.1 * power,
+      dx: (x < 90 ? -17 : 17) * split + (x < 90 ? -15 : 15) * pose.scatter + sine(s, 6.1, phase) * 2.3 * power,
+      dy: -18 * split - 8 * pose.scatter + sine(s, 4.5, phase) * 2.1 * power,
     });
   }
   context.restore();
@@ -198,6 +244,11 @@ function frame(timestamp) {
   const smoothing = 1 - Math.exp(-delta * 8);
   motion.exploded = lerp(motion.exploded, motion.targetExploded, smoothing);
   drawCharacter(motion.elapsed);
+  const hitActive = hitController.isActiveAt(motion.elapsed);
+  if (wasHitActive && !hitActive && motion.playing) {
+    status.textContent = 'Idle · animé';
+  }
+  wasHitActive = hitActive;
   requestAnimationFrame(frame);
 }
 
@@ -216,6 +267,33 @@ playButton.addEventListener('click', () => {
   playButton.textContent = motion.playing ? 'Mettre en pause' : 'Reprendre';
   playButton.setAttribute('aria-pressed', String(!motion.playing));
   status.textContent = motion.playing ? 'Idle · animé' : 'Idle · en pause';
+});
+
+/** Réagit uniquement aux pixels visibles du personnage, pas au fond du Canvas. */
+function hitTest(event) {
+  const bounds = canvas.getBoundingClientRect();
+  const x = (event.clientX - bounds.left) * CANVAS.width / bounds.width;
+  const y = (event.clientY - bounds.top) * CANVAS.height / bounds.height;
+  if (x < 16 || x > 169 || y < 27 || y > 201) return false;
+
+  const pixel = context.getImageData(Math.floor(x * 3), Math.floor(y * 3), 1, 1).data;
+  return pixel[3] > 65;
+}
+
+function triggerHit() {
+  if (!motion.playing || motion.reducedMotion) return;
+  if (hitController.trigger(motion.elapsed)) {
+    status.textContent = 'Hit · surpris';
+  }
+}
+
+canvas.addEventListener('click', (event) => {
+  if (hitTest(event)) triggerHit();
+});
+canvas.addEventListener('keydown', (event) => {
+  if (event.key !== 'Enter' && event.key !== ' ') return;
+  event.preventDefault();
+  triggerHit();
 });
 
 blinkButton.addEventListener('click', () => {

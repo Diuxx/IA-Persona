@@ -60,3 +60,6 @@ footer { margin-top: 24px; text-align: center; color: #686570; font-size: 11px; 
   .footnote { padding-top: 20px; }
 }
 @media (prefers-reduced-motion: reduce) { button { transition: none; } }
+
+#mascot { cursor: pointer; }
+#mascot:focus-visible { outline: 2px solid #e0cfff; outline-offset: 4px; border-radius: 12px; }
