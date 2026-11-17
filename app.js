@@ -35,6 +35,8 @@ const motion = {
   targetExploded: 0,
   pointerX: 0,
   pointerY: 0,
+  targetPointerX: 0,
+  targetPointerY: 0,
   reducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
 };
 
@@ -79,8 +81,9 @@ function drawImageLayer(name, options = {}) {
  */
 function drawEye(seconds, split, power) {
   const closure = blinkController.closureAt(seconds) * Math.min(1, power);
-  const gazeX = sine(seconds, 9.8, 0.4) * 0.48 * power;
-  const gazeY = sine(seconds, 7.3, 1.1) * 0.25 * power;
+  // Le regard suit discrètement le pointeur, sans remplacer les mouvements spontanés.
+  const gazeX = sine(seconds, 9.8, 0.4) * 0.48 * power + motion.pointerX * 0.18;
+  const gazeY = sine(seconds, 7.3, 1.1) * 0.25 * power + motion.pointerY * 0.12;
   const eyeTwitch = sine(seconds, 5.9) * 0.004 * power;
 
   // Le calque lui-même se comprime verticalement : l’œil devient une fine fente,
@@ -185,7 +188,13 @@ function frame(timestamp) {
   const seconds = timestamp / 1000;
   const delta = motion.lastFrame === 0 ? 0 : Math.min(seconds - motion.lastFrame, 0.05);
   motion.lastFrame = seconds;
-  if (motion.playing && !motion.reducedMotion) motion.elapsed += delta;
+  if (motion.playing && !motion.reducedMotion) {
+    motion.elapsed += delta;
+    // Le pointeur ne provoque plus de déplacement brusque à l’entrée ou à la sortie.
+    const pointerSmoothing = 1 - Math.exp(-delta * 7);
+    motion.pointerX = lerp(motion.pointerX, motion.targetPointerX * motion.intensity, pointerSmoothing);
+    motion.pointerY = lerp(motion.pointerY, motion.targetPointerY * motion.intensity, pointerSmoothing);
+  }
   const smoothing = 1 - Math.exp(-delta * 8);
   motion.exploded = lerp(motion.exploded, motion.targetExploded, smoothing);
   drawCharacter(motion.elapsed);
@@ -198,8 +207,8 @@ function handlePointer(event) {
   const x = (event.clientX - rect.left) / rect.width - 0.5;
   const y = (event.clientY - rect.top) / rect.height - 0.5;
   // La légère orientation vers le pointeur reste facultative et discrète.
-  motion.pointerX = Math.max(-2, Math.min(2, x * 3.5));
-  motion.pointerY = Math.max(-1, Math.min(1, y * 1.5));
+  motion.targetPointerX = Math.max(-2, Math.min(2, x * 3.5));
+  motion.targetPointerY = Math.max(-1, Math.min(1, y * 1.5));
 }
 
 playButton.addEventListener('click', () => {
@@ -228,8 +237,8 @@ intensityInput.addEventListener('input', () => {
 
 stage.addEventListener('pointermove', handlePointer);
 stage.addEventListener('pointerleave', () => {
-  motion.pointerX = 0;
-  motion.pointerY = 0;
+  motion.targetPointerX = 0;
+  motion.targetPointerY = 0;
 });
 
 Promise.all(imageNames.map(loadImage))

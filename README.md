@@ -36,6 +36,7 @@ Les animations sont superposées plutôt que remplacées :
 - animation douce des pattes et de l’œil unique ;
 - clignement par compression verticale du calque original en une fine fente, toutes les 3,8 à 7,5 secondes ;
 - quelques doubles clignements, et un regard très légèrement mobile ;
+- suivi très discret du pointeur, avec amortissement à l’entrée et au départ, sans saut ni remise à zéro de la lévitation ;
 - gouttelettes et particules avec périodes différentes ;
 - micro-contraction ponctuelle et effet de profondeur limité au survol.
 
