@@ -90,13 +90,23 @@ function triggerHit() {
   }
 }
 
+/** Approximation de la silhouette, sans lecture des pixels du Canvas. */
+function isInsideMascot(x, y) {
+  const ellipse = (cx, cy, rx, ry) =>
+    ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 <= 1;
+  return ellipse(130, 145, 69, 78) ||
+    ellipse(81, 84, 23, 25) ||
+    ellipse(180, 84, 23, 25);
+}
+
 function handleCanvasClick(event) {
   if (!ready || player.paused || player.reducedMotion) return;
   const rect = canvas.getBoundingClientRect();
   const x = (event.clientX - rect.left) / rect.width * canvas.width;
   const y = (event.clientY - rect.top) / rect.height * canvas.height;
   if (x < 0 || y < 0 || x >= canvas.width || y >= canvas.height) return;
-  if (context.getImageData(Math.floor(x), Math.floor(y), 1, 1).data[3] > 65) triggerHit();
+  if (isInsideMascot(x * FRAME_SIZE.width / canvas.width,
+    y * FRAME_SIZE.height / canvas.height)) triggerHit();
 }
 
 playButton.addEventListener('click', () => {

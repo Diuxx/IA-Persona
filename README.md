@@ -55,3 +55,9 @@ node --check animation-player.js
 - Les idle/blink sont des frames dérivées de la pose finale de l'animation Hit. Pour une animation traditionnelle encore plus riche, on peut ultérieurement les remplacer par une séquence dessinée à la main.
 - Les sources historiques demeurent présentes pour ne pas perdre les éléments d'origine. Elles ne participent pas au moteur de rendu.
 - Aucun état `listening`, `thinking` ou `speaking`, ni connexion à Ollama pour le moment.
+
+## Compatibilité Canvas et origine des fichiers
+
+Le générateur de spritesheets ne lit plus les pixels des images chargées : il utilise uniquement `drawImage` et `globalCompositeOperation`. La zone de clic sur le nuage est estimée géométriquement, sans `getImageData`. Ainsi, l’application ne dépend plus de la lecture d’un Canvas potentiellement *tainted*.
+
+Pour éviter les restrictions propres à `file://`, utiliser de préférence un serveur statique : `python -m http.server 8000`.

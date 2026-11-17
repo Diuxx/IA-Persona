@@ -32,38 +32,33 @@ function buildAnimationAtlases(hit, frameWidth = 250, frameHeight = 251) {
 
   const blink = createSpriteCanvas(frameWidth * 8, frameHeight);
   const blinkContext = blink.getContext('2d');
-  const poseContext = pose.getContext('2d');
+  // Dupliquer uniquement le découpage de l’œil, sans lire les pixels du Canvas.
+  // L'alpha de la forme originale est préservé via la composition source-atop.
   const eyeRegion = { x: 98, y: 149, width: 60, height: 24 };
-  const eyePixels = poseContext.getImageData(eyeRegion.x, eyeRegion.y, eyeRegion.width, eyeRegion.height);
-  const closedPixels = new ImageData(new Uint8ClampedArray(eyePixels.data), eyeRegion.width, eyeRegion.height);
-  const whitePixels = new ImageData(new Uint8ClampedArray(eyePixels.data.length), eyeRegion.width, eyeRegion.height);
+  const darkEye = createSpriteCanvas(eyeRegion.width, eyeRegion.height);
+  const darkEyeContext = darkEye.getContext('2d');
+  darkEyeContext.drawImage(pose,
+    eyeRegion.x, eyeRegion.y, eyeRegion.width, eyeRegion.height,
+    0, 0, eyeRegion.width, eyeRegion.height);
+  darkEyeContext.globalCompositeOperation = 'source-atop';
+  darkEyeContext.fillStyle = '#050505';
+  darkEyeContext.fillRect(0, 0, eyeRegion.width, eyeRegion.height);
+  darkEyeContext.globalCompositeOperation = 'source-over';
 
-  for (let i = 0; i < eyePixels.data.length; i += 4) {
-    const brightness = Math.max(eyePixels.data[i], eyePixels.data[i + 1], eyePixels.data[i + 2]);
-    const bright = brightness >= 75 && eyePixels.data[i + 3] > 64;
-    if (bright) {
-      closedPixels.data[i] = 5;
-      closedPixels.data[i + 1] = 5;
-      closedPixels.data[i + 2] = 5;
-      whitePixels.data[i] = eyePixels.data[i];
-      whitePixels.data[i + 1] = eyePixels.data[i + 1];
-      whitePixels.data[i + 2] = eyePixels.data[i + 2];
-      whitePixels.data[i + 3] = eyePixels.data[i + 3];
-    }
-  }
-
-  const whiteEye = createSpriteCanvas(eyeRegion.width, eyeRegion.height);
-  whiteEye.getContext('2d').putImageData(whitePixels, 0, 0);
   const openness = [1, 0.86, 0.47, 0.06, 0, 0.24, 0.75, 1];
   for (let i = 0; i < openness.length; i += 1) {
     const x = i * frameWidth;
     blinkContext.drawImage(pose, x, 0);
-    blinkContext.putImageData(closedPixels, x + eyeRegion.x, eyeRegion.y);
-    if (openness[i] > 0) {
-      const height = Math.max(1, Math.round(eyeRegion.height * openness[i]));
-      const y = eyeRegion.y + Math.floor((eyeRegion.height - height) / 2);
-      blinkContext.drawImage(whiteEye, x + eyeRegion.x, y, eyeRegion.width, height);
-    }
+    if (openness[i] >= 1) continue;
+
+    blinkContext.drawImage(darkEye, x + eyeRegion.x, eyeRegion.y);
+    if (openness[i] === 0) continue;
+
+    const height = Math.max(1, Math.round(eyeRegion.height * openness[i]));
+    const y = eyeRegion.y + Math.floor((eyeRegion.height - height) / 2);
+    blinkContext.drawImage(pose,
+      eyeRegion.x, eyeRegion.y, eyeRegion.width, eyeRegion.height,
+      x + eyeRegion.x, y, eyeRegion.width, height);
   }
 
   return { idle, blink, hit };
