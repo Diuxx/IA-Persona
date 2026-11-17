@@ -22,6 +22,7 @@ const context = canvas.getContext('2d');
 const playButton = document.querySelector('#play-toggle');
 const layersButton = document.querySelector('#layers-toggle');
 const blinkButton = document.querySelector('#blink-trigger');
+const hitButton = document.querySelector('#hit-trigger');
 const intensityInput = document.querySelector('#intensity');
 const intensityValue = document.querySelector('#intensity-value');
 const status = document.querySelector('#status');
@@ -241,6 +242,7 @@ function frame(timestamp) {
   if (wasHitActive && !hitActive && motion.playing) {
     status.textContent = 'Idle · animé';
   }
+  if (wasHitActive !== hitActive) updateHitButtonAvailability();
   wasHitActive = hitActive;
   requestAnimationFrame(frame);
 }
@@ -259,7 +261,10 @@ playButton.addEventListener('click', () => {
   motion.playing = !motion.playing;
   playButton.textContent = motion.playing ? 'Mettre en pause' : 'Reprendre';
   playButton.setAttribute('aria-pressed', String(!motion.playing));
-  status.textContent = motion.playing ? 'Idle · animé' : 'Idle · en pause';
+  status.textContent = motion.playing
+    ? (hitController.isActiveAt(motion.elapsed) ? 'Hit · surpris' : 'Idle · animé')
+    : 'Idle · en pause';
+  updateHitButtonAvailability();
 });
 
 /** Réagit uniquement aux pixels visibles du personnage, pas au fond du Canvas. */
@@ -273,12 +278,20 @@ function hitTest(event) {
   return pixel[3] > 65;
 }
 
+function updateHitButtonAvailability() {
+  hitButton.disabled = !hitSprite || !motion.playing || motion.reducedMotion ||
+    hitController.isActiveAt(motion.elapsed);
+}
+
 function triggerHit() {
-  if (!motion.playing || motion.reducedMotion) return;
+  if (!motion.playing || motion.reducedMotion || !hitSprite) return;
   if (hitController.trigger(motion.elapsed)) {
     status.textContent = 'Hit · surpris';
+    updateHitButtonAvailability();
   }
 }
+
+hitButton.addEventListener('click', triggerHit);
 
 canvas.addEventListener('click', (event) => {
   if (hitTest(event)) triggerHit();
@@ -322,6 +335,7 @@ Promise.all([Promise.all(imageNames.map(loadImage)), loadHitSprite()])
     context.imageSmoothingEnabled = true;
     context.imageSmoothingQuality = 'high';
     status.textContent = motion.reducedMotion ? 'Idle · animations réduites' : 'Idle · animé';
+    updateHitButtonAvailability();
     requestAnimationFrame(frame);
   })
   .catch((error) => {

@@ -56,7 +56,7 @@ Le réglage de réduction des mouvements du système désactive l'animation idle
 
 ## Interaction « Hit »
 
-Cliquez sur les pixels visibles du nuage (ou focalisez le Canvas puis appuyez sur Entrée/Espace). Une animation de 0,96 seconde rejoue les huit images de la référence : impact, œil surpris, explosion des masses, retour à l’idle. Les clics pendant la réaction sont ignorés. La pause et les préférences « réduire les animations » sont respectées. Le GIF fourni sert de référence visuelle : la réaction utilise les images originales de la référence, au lieu de reproduire les poses par calcul. Le fond gris a été isolé pour préserver la transparence et l’apparence sur le Canvas.
+Cliquez sur les pixels visibles du nuage, sur le bouton **« Déclencher l’explosion »** des contrôles, ou focalisez le Canvas puis appuyez sur Entrée/Espace. Une animation de 0,96 seconde rejoue les huit images de la référence : impact, œil surpris, explosion des masses, retour à l’idle. Le bouton est désactivé pendant le chargement des assets, la pause, la réaction et lorsque les animations sont réduites. Les clics pendant la réaction sont ignorés. La pause et les préférences « réduire les animations » sont respectées. Le GIF fourni sert de référence visuelle : la réaction utilise les images originales de la référence, au lieu de reproduire les poses par calcul. Le fond gris a été isolé pour préserver la transparence et l’apparence sur le Canvas.
 
 Tests : `node --test tests/*.test.cjs`.
 
