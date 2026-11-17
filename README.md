@@ -1,65 +1,57 @@
-# Nuage — premier idle en JavaScript
+# IA-Persona — animations 2D en spritesheets
 
-Démo HTML/CSS/Canvas 2D construite à partir du PNG de référence fourni.
-Pas de bibliothèque à installer.
+Un compagnon nuage noir à **œil unique**, animé exclusivement image par image sur Canvas 2D.
+Aucun framework ni étape de build JavaScript n'est nécessaire. Les spritesheets idle et blink sont générées **une seule fois au chargement** depuis la référence Hit, puis mises en cache en mémoire.
 
 ## Démarrer
 
-Ouvrir `index.html` dans un navigateur, ou lancer un petit serveur statique :
+Ouvrir `index.html` dans un navigateur ou lancer un serveur statique :
 
 ```bash
-cd IA-Persona
 python -m http.server 8000
 ```
 
-Puis accéder à `http://localhost:8000`.
+Puis ouvrir `http://localhost:8000`.
 
-## Structure
+## Architecture
 
-- `index.html` : interface de démonstration.
-- `styles.css` : présentation responsive.
-- `app.js` : chargement et animation continue des calques sur Canvas 2D.
-- `eye-blink-controller.js` : clignement naturel de l’œil unique, indépendant de la lévitation et testé sans navigateur.
-- `hit-controller.js` : chronologie exacte des huit images de référence, au rythme de 120 ms/image, avec fondus d’entrée et de sortie et tests.
-- `assets/hit-explosion-sprite.png` : huit images exactes de l’animation validée, extraites sur fond transparent pour le Canvas.
-- `assets/*.png` : 13 couches PNG transparentes, **alignées sur le repère d'origine**. Elles ont toutes la même taille (724 × 820 px, source multipliée par quatre). Cette méthode évite d'avoir à repositionner chaque couche au pixel près.
-- `assets/cropped/*.png` : les mêmes calques, recadrés pour les réutiliser dans un autre moteur.
-- `assets/manifest.json` : position et dimensions de chaque calque recadré, exprimées en pixels de l'image d'origine.
-- `source.png` : capture de référence originale (181 × 205 px).
-- `tools/split_assets.py` : script de découpage avec Pillow, NumPy et OpenCV.
+| Fichier | Rôle |
+|---|---|
+| `animation-player.js` | Machine à états, vitesse, clignements et transitions. Ne manipule aucun pixel. |
+| `app.js` | Chargement, rendu de frames complètes et événements UI. |
+| `sprite-atlas.js` | Prépare au démarrage les frames idle/blink depuis la pose de référence, puis les met en cache. |
+| Atlas `idle` en mémoire | 24 frames complètes, 12 FPS, boucle de 2 s. |
+| Atlas `blink` en mémoire | 8 frames, 30 FPS, clignement naturel et doubles clignements occasionnels. |
+| `assets/hit-explosion-sprite.png` | 8 frames de l'explosion approuvée, 120 ms chacune. |
 
-## Comportement idle
+Chaque frame mesure **250 × 251 pixels**. Les spritesheets ont un fond transparent. Les atlases idle/blink sont préparés **une seule fois**, et le moteur ne les recalcule jamais ensuite. L'application lit la frame complète via `drawImage` ; **aucune reconstruction des calques, déformation ni dessin du visage pendant le `requestAnimationFrame`**.
 
-Les animations sont superposées plutôt que remplacées :
+Les anciens `assets/body.png`, `assets/mouth.png`, etc. restent conservés comme **sources historiques** mais ne sont plus utilisés pour le rendu.
 
-- flottement vertical sur environ 3,8 s ;
-- très légère respiration et inclinaison du corps ;
-- faible oscillation indépendante des trois volumes gris ;
-- animation douce des pattes et de l’œil unique ;
-- clignement par compression verticale du calque original en une fine fente, toutes les 3,8 à 7,5 secondes ;
-- quelques doubles clignements, et un regard très légèrement mobile ;
-- suivi très discret du pointeur, avec amortissement à l’entrée et au départ, sans saut ni remise à zéro de la lévitation ;
-- gouttelettes et particules avec périodes différentes ;
-- micro-contraction ponctuelle et effet de profondeur limité au survol.
+## Fonctionnement
 
-Contrôles : intensité de 0 à 150 %, pause, vue éclatée des calques et clignement manuel.
+- `idle` : lévitation/respiration en boucle ; `blink` automatique après un intervalle variable de 3,8 à 7,5 s.
+- `blink` : 8 frames, avec parfois un deuxième clignement.
+- `hit` : clic sur la créature, bouton « Déclencher l'explosion », ou Entrée/Espace sur le Canvas ; retourne à `idle` après 0,96 s.
+- Transitions : fondu court entre deux **frames complètes** quand l'état change.
+- Pause : l'horloge s'arrête ; les événements Hit/Blink sont bloqués.
+- Préférence système « réduire les animations » : affiche une pose idle fixe et bloque les réactions animées.
+- Réglage de vitesse : 50 à 150 %, partagé par toutes les animations.
 
-Tester le contrôleur : `node --test tests/*.test.cjs`.
+## Ajouter de nouvelles séquences
+
+Une nouvelle animation peut être chargée directement comme spritesheet complète via une entrée dans `ANIMATION_CLIPS`. Les états déjà présents sont construits à partir du même dessin pour rester cohérents.
+
+## Tests
+
+```bash
+node --test tests/*.test.cjs
+node --check app.js
+node --check animation-player.js
+```
 
 ## Limites
 
-La source est une capture **aplatie de seulement 181 × 205 pixels**. Le calque historique `assets/mouth.png` représente en réalité **un seul œil**, pas une bouche ni deux yeux. On conserve ce nom de fichier pour ne pas casser le découpage existant. Les volumes séparés ne disposent pas de dessin sous les zones cachées. Les transformations restent donc volontairement discrètes ; des mouvements plus amples exigeraient de redessiner le personnage en vectoriel ou de compléter les zones occultées.
-
-La démo n'est pas encore connectée à Ollama et ne contient pas les états `thinking`, `listening` ou `speaking`.
-
-Le réglage de réduction des mouvements du système désactive l'animation idle automatiquement.
-
-## Interaction « Hit »
-
-Cliquez sur les pixels visibles du nuage, sur le bouton **« Déclencher l’explosion »** des contrôles, ou focalisez le Canvas puis appuyez sur Entrée/Espace. Une animation de 0,96 seconde rejoue les huit images de la référence : impact, œil surpris, explosion des masses, retour à l’idle. Le bouton est désactivé pendant le chargement des assets, la pause, la réaction et lorsque les animations sont réduites. Les clics pendant la réaction sont ignorés. La pause et les préférences « réduire les animations » sont respectées. Le GIF fourni sert de référence visuelle : la réaction utilise les images originales de la référence, au lieu de reproduire les poses par calcul. Le fond gris a été isolé pour préserver la transparence et l’apparence sur le Canvas.
-
-Tests : `node --test tests/*.test.cjs`.
-
-### Origine des images Hit
-
-Le sprite provient du GIF généré et validé dans cette conversation pour cette mascotte. Huit images de 437 × 439 pixels ont été redimensionnées en 250 × 251, détachées de leur fond gris puis assemblées horizontalement. Cette conversion entraîne de très légères différences aux contours, mais les poses sont celles du GIF validé.
+- Les idle/blink sont des frames dérivées de la pose finale de l'animation Hit. Pour une animation traditionnelle encore plus riche, on peut ultérieurement les remplacer par une séquence dessinée à la main.
+- Les sources historiques demeurent présentes pour ne pas perdre les éléments d'origine. Elles ne participent pas au moteur de rendu.
+- Aucun état `listening`, `thinking` ou `speaking`, ni connexion à Ollama pour le moment.

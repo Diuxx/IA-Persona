@@ -1,344 +1,142 @@
-/**
- * Idle de la mascotte nuage.
- *
- * Chaque couche conserve les coordonnées du PNG d'origine (181 × 205).
- * L'animation est composée de mouvements indépendants et continus : aucun GIF,
- * aucune transition qui remet brusquement le personnage à zéro.
- */
-const ORIGINAL = { width: 181, height: 205 };
-const CANVAS = { width: 181, height: 235 };
-const TAU = Math.PI * 2;
-// Nom historique du fichier : le calque « mouth » contient en réalité l’œil unique.
-const EYE_ASSET = 'mouth';
-const HIT_SPRITE = { frameWidth: 250, frameHeight: 251, width: 242, height: 243, x: -30, y: -16 };
-const imageNames = [
-  'leg-left', 'leg-right', 'body', 'puff-left', 'puff-top', 'puff-right',
-  EYE_ASSET, 'droplet-left', 'droplet-right',
-  'spark-1', 'spark-2', 'spark-3', 'spark-4',
-];
-
+/** IA-Persona : un seul rendu Canvas pour trois animations image par image. */
 const canvas = document.querySelector('#mascot');
 const context = canvas.getContext('2d');
 const playButton = document.querySelector('#play-toggle');
-const layersButton = document.querySelector('#layers-toggle');
 const blinkButton = document.querySelector('#blink-trigger');
 const hitButton = document.querySelector('#hit-trigger');
-const intensityInput = document.querySelector('#intensity');
-const intensityValue = document.querySelector('#intensity-value');
+const speedInput = document.querySelector('#speed');
+const speedOutput = document.querySelector('#speed-value');
 const status = document.querySelector('#status');
-const stage = document.querySelector('#stage');
+const errorMessage = document.querySelector('#error-message');
 
-const motion = {
-  playing: true,
-  elapsed: 0,
-  lastFrame: 0,
-  intensity: Number(intensityInput.value) / 100,
-  exploded: 0,
-  targetExploded: 0,
-  pointerX: 0,
-  pointerY: 0,
-  targetPointerX: 0,
-  targetPointerY: 0,
-  reducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-};
+const player = new AnimationPlayer();
+const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+const sprites = new Map();
+let ready = false;
+let lastTimestamp = null;
+let lastStatus = '';
 
-const assets = new Map();
-const blinkController = new EyeBlinkController();
-const hitController = new HitController();
-let hitSprite;
-let wasHitActive = false;
+player.setReducedMotion(motionQuery.matches);
+canvas.width = FRAME_SIZE.width * 3;
+canvas.height = FRAME_SIZE.height * 3;
+context.setTransform(3, 0, 0, 3, 0, 0);
+context.imageSmoothingEnabled = true;
+context.imageSmoothingQuality = 'high';
 
-function loadImage(name) {
+function loadSprite(name, clip) {
   return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve([name, img]);
-    img.onerror = () => reject(new Error(`Impossible de charger assets/${name}.png`));
-    img.src = `./assets/${name}.png`;
-  });
-}
-
-function loadHitSprite() {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => {
-      if (img.width !== HIT_SPRITE.frameWidth * hitController.frameCount ||
-          img.height !== HIT_SPRITE.frameHeight) {
-        reject(new Error('La planche Hit ne contient pas les huit images attendues.'));
+    const image = new Image();
+    image.onload = () => {
+      if (image.width !== FRAME_SIZE.width * clip.frames || image.height !== FRAME_SIZE.height) {
+        reject(new Error(`Spritesheet incorrecte pour ${name} : ${image.width} × ${image.height}.`));
         return;
       }
-      resolve(img);
+      resolve([name, image]);
     };
-    img.onerror = () => reject(new Error('Impossible de charger assets/hit-explosion-sprite.png'));
-    img.src = './assets/hit-explosion-sprite.png';
+    image.onerror = () => reject(new Error(`Impossible de charger ${clip.src}.`));
+    image.src = clip.src;
   });
 }
 
-function sine(seconds, period, phase = 0) {
-  return Math.sin((seconds / period) * TAU + phase);
-}
-
-function lerp(from, to, amount) {
-  return from + (to - from) * amount;
-}
-
-function drawImageLayer(name, options = {}) {
-  const image = assets.get(name);
-  if (!image) return;
-  const {
-    x = 90, y = 100, dx = 0, dy = 0,
-    sx = 1, sy = 1, rotation = 0,
-  } = options;
-  context.save();
-  context.translate(x + dx, y + dy);
-  context.rotate(rotation);
-  context.scale(sx, sy);
-  context.drawImage(image, -x, -y, ORIGINAL.width, ORIGINAL.height);
-  context.restore();
-}
-
-/** L’œil unique original reprend son clignement normal lorsque la réaction se termine. */
-function drawEye(seconds, split, power) {
-  const closure = blinkController.closureAt(seconds) * Math.min(1, power);
-  const gazeX = sine(seconds, 9.8, 0.4) * 0.48 * power + motion.pointerX * 0.18;
-  const gazeY = sine(seconds, 7.3, 1.1) * 0.25 * power + motion.pointerY * 0.12;
-  const eyeTwitch = sine(seconds, 5.9) * 0.004 * power;
-  drawImageLayer(EYE_ASSET, {
-    x: 102, y: 133,
-    dx: gazeX,
-    dy: gazeY + 15 * split,
-    sx: 1 + eyeTwitch,
-    sy: 1 - closure * 0.93,
-  });
-}
-
-/** Lit les images telles que dessinées dans la référence, sans redessiner l'explosion. */
-function drawHitFrame(frameIndex, alpha) {
+function renderFrame(name, frame, alpha = 1) {
   if (alpha <= 0) return;
+  const sprite = sprites.get(name);
+  if (!sprite) return;
   context.save();
   context.globalAlpha = alpha;
-  context.drawImage(
-    hitSprite,
-    frameIndex * HIT_SPRITE.frameWidth, 0,
-    HIT_SPRITE.frameWidth, HIT_SPRITE.frameHeight,
-    HIT_SPRITE.x, HIT_SPRITE.y, HIT_SPRITE.width, HIT_SPRITE.height,
-  );
+  context.drawImage(sprite, frame * FRAME_SIZE.width, 0,
+    FRAME_SIZE.width, FRAME_SIZE.height,
+    0, 0, FRAME_SIZE.width, FRAME_SIZE.height);
   context.restore();
 }
 
-function drawHit(sample) {
-  drawHitFrame(sample.frame, sample.opacity * (1 - sample.blend));
-  if (sample.blend > 0) drawHitFrame(sample.nextFrame, sample.opacity * sample.blend);
+function render() {
+  const current = player.getPresentation();
+  context.clearRect(0, 0, FRAME_SIZE.width, FRAME_SIZE.height);
+  const previousOpacity = current.previous?.alpha ?? 0;
+  if (current.previous) renderFrame(current.previous.state, current.previous.frame, previousOpacity);
+  renderFrame(current.state, current.frame, 1 - previousOpacity);
 }
 
-function drawShadow(bob, split) {
-  const baseAlpha = Math.max(0.08, 0.19 - Math.abs(bob) * 0.012);
-  context.save();
-  context.globalAlpha = baseAlpha * (1 - split * 0.4);
-  context.fillStyle = '#070709';
-  context.beginPath();
-  context.ellipse(93, 216, 37 + Math.abs(bob) * 1.2, 4.7, 0, 0, TAU);
-  context.fill();
-  context.restore();
-}
-
-function drawCharacter(seconds) {
-  const s = seconds;
-  const power = motion.reducedMotion ? 0 : motion.intensity;
-  const split = motion.exploded;
-  const bob = sine(s, 3.8) * 4.1 * power;
-  const breathe = sine(s, 3.15, 0.45) * 0.015 * power;
-  const sway = sine(s, 7.2) * 0.013 * power;
-  const microTwitch = Math.exp(-Math.pow(((s + 0.12) % 11.7 - 0.17) / 0.10, 2)) * 0.007 * power;
-
-  drawShadow(bob, split);
-
-  context.save();
-  // Le mouvement général est commun à toutes les pièces : pas de rupture de raccord.
-  context.translate(91 + motion.pointerX, 106 + bob + motion.pointerY);
-  context.rotate(sway);
-  context.scale(1 + breathe + microTwitch, 1 - breathe * 0.75 - microTwitch);
-  context.translate(-91, -106);
-
-  // Les pattes passent sous le corps, qui dissimule leurs points d'attache.
-  drawImageLayer('leg-left', {
-    x: 68, y: 164, dx: -15 * split,
-    dy: 20 * split + sine(s, 4.8, 1) * 0.7 * power,
-    rotation: sine(s, 4.7, 0.4) * 0.018 * power,
-  });
-  drawImageLayer('leg-right', {
-    x: 125, y: 164, dx: 15 * split,
-    dy: 20 * split + sine(s, 5.1, 2.2) * 0.7 * power,
-    rotation: sine(s, 4.8, 1.7) * -0.018 * power,
-  });
-
-  drawImageLayer('body', { x: 96, y: 110 });
-  drawImageLayer('puff-left', {
-    x: 51, y: 89, dx: -23 * split + sine(s, 3.55, 1.1) * 0.52 * power,
-    dy: -3 * split + sine(s, 3.8, 1.5) * 0.40 * power,
-    sx: 1 + sine(s, 3.15, -0.6) * 0.006 * power,
-  });
-  drawImageLayer('puff-top', {
-    x: 98, y: 61, dy: -22 * split + sine(s, 3.15, 0.5) * 0.68 * power,
-    sx: 1 + sine(s, 3.1, 0.7) * 0.008 * power,
-    sy: 1 + sine(s, 3.2, -0.5) * 0.009 * power,
-  });
-  drawImageLayer('puff-right', {
-    x: 132, y: 86, dx: 24 * split + sine(s, 4.0, 2.5) * 0.55 * power,
-    dy: -2 * split + sine(s, 3.5, 0.7) * 0.34 * power,
-  });
-  drawEye(s, split, power);
-
-  // Les gouttelettes flottent à une fréquence différente de celle du corps.
-  drawImageLayer('droplet-left', {
-    x: 34, y: 38, dx: -10 * split + sine(s, 4.6, 0.3) * 1.9 * power,
-    dy: -13 * split + sine(s, 3.35, 0.8) * 1.65 * power,
-    rotation: sine(s, 5.8, 2) * 0.065 * power,
-  });
-  drawImageLayer('droplet-right', {
-    x: 146, y: 38, dx: 11 * split + sine(s, 5.1, 1.5) * 1.6 * power,
-    dy: -12 * split + sine(s, 3.9, 2) * 1.7 * power,
-    rotation: sine(s, 5.5, 1) * -0.07 * power,
-  });
-
-  const specks = [
-    ['spark-1', 48, 7, 0.3],
-    ['spark-2', 50, 45, 1.4],
-    ['spark-3', 136, 43, 2.5],
-    ['spark-4', 143, 48, 3.1],
-  ];
-  for (const [name, x, y, phase] of specks) {
-    drawImageLayer(name, {
-      x, y,
-      dx: (x < 90 ? -17 : 17) * split + sine(s, 6.1, phase) * 2.3 * power,
-      dy: -18 * split + sine(s, 4.5, phase) * 2.1 * power,
-    });
+function updateControls() {
+  playButton.disabled = !ready || player.reducedMotion;
+  blinkButton.disabled = !ready || player.paused || player.reducedMotion || player.state !== 'idle';
+  hitButton.disabled = !ready || player.paused || player.reducedMotion || player.state === 'hit';
+  const nextStatus = !ready ? 'Chargement…'
+    : player.reducedMotion ? 'Idle · animations réduites'
+      : player.paused ? 'Animation en pause'
+        : player.state === 'hit' ? 'Hit · explosion'
+          : player.state === 'blink' ? 'Blink · clignement' : 'Idle · animé';
+  if (lastStatus !== nextStatus) {
+    status.textContent = nextStatus;
+    lastStatus = nextStatus;
   }
-  context.restore();
 }
 
 function frame(timestamp) {
-  const seconds = timestamp / 1000;
-  const delta = motion.lastFrame === 0 ? 0 : Math.min(seconds - motion.lastFrame, 0.05);
-  motion.lastFrame = seconds;
-  if (motion.playing && !motion.reducedMotion) {
-    motion.elapsed += delta;
-    // Le pointeur ne provoque plus de déplacement brusque à l’entrée ou à la sortie.
-    const pointerSmoothing = 1 - Math.exp(-delta * 7);
-    motion.pointerX = lerp(motion.pointerX, motion.targetPointerX * motion.intensity, pointerSmoothing);
-    motion.pointerY = lerp(motion.pointerY, motion.targetPointerY * motion.intensity, pointerSmoothing);
-  }
-  const smoothing = 1 - Math.exp(-delta * 8);
-  motion.exploded = lerp(motion.exploded, motion.targetExploded, smoothing);
-  const hitSample = hitController.sampleAt(motion.elapsed);
-  context.clearRect(0, 0, CANVAS.width, CANVAS.height);
-  if (!hitSample.active || hitSample.opacity < 1) {
-    context.save();
-    context.globalAlpha = hitSample.active ? 1 - hitSample.opacity : 1;
-    drawCharacter(motion.elapsed);
-    context.restore();
-  }
-  if (hitSample.active) drawHit(hitSample);
-  const hitActive = hitController.isActiveAt(motion.elapsed);
-  if (wasHitActive && !hitActive && motion.playing) {
-    status.textContent = 'Idle · animé';
-  }
-  if (wasHitActive !== hitActive) updateHitButtonAvailability();
-  wasHitActive = hitActive;
-  requestAnimationFrame(frame);
-}
-
-function handlePointer(event) {
-  if (!motion.playing || motion.reducedMotion) return;
-  const rect = stage.getBoundingClientRect();
-  const x = (event.clientX - rect.left) / rect.width - 0.5;
-  const y = (event.clientY - rect.top) / rect.height - 0.5;
-  // La légère orientation vers le pointeur reste facultative et discrète.
-  motion.targetPointerX = Math.max(-2, Math.min(2, x * 3.5));
-  motion.targetPointerY = Math.max(-1, Math.min(1, y * 1.5));
-}
-
-playButton.addEventListener('click', () => {
-  motion.playing = !motion.playing;
-  playButton.textContent = motion.playing ? 'Mettre en pause' : 'Reprendre';
-  playButton.setAttribute('aria-pressed', String(!motion.playing));
-  status.textContent = motion.playing
-    ? (hitController.isActiveAt(motion.elapsed) ? 'Hit · surpris' : 'Idle · animé')
-    : 'Idle · en pause';
-  updateHitButtonAvailability();
-});
-
-/** Réagit uniquement aux pixels visibles du personnage, pas au fond du Canvas. */
-function hitTest(event) {
-  const bounds = canvas.getBoundingClientRect();
-  const x = (event.clientX - bounds.left) * CANVAS.width / bounds.width;
-  const y = (event.clientY - bounds.top) * CANVAS.height / bounds.height;
-  if (x < 16 || x > 169 || y < 27 || y > 201) return false;
-
-  const pixel = context.getImageData(Math.floor(x * 3), Math.floor(y * 3), 1, 1).data;
-  return pixel[3] > 65;
-}
-
-function updateHitButtonAvailability() {
-  hitButton.disabled = !hitSprite || !motion.playing || motion.reducedMotion ||
-    hitController.isActiveAt(motion.elapsed);
+  const delta = lastTimestamp == null ? 0 : (timestamp - lastTimestamp) / 1000;
+  lastTimestamp = timestamp;
+  player.advance(delta);
+  render();
+  updateControls();
+  window.requestAnimationFrame(frame);
 }
 
 function triggerHit() {
-  if (!motion.playing || motion.reducedMotion || !hitSprite) return;
-  if (hitController.trigger(motion.elapsed)) {
-    status.textContent = 'Hit · surpris';
-    updateHitButtonAvailability();
+  if (!ready) return;
+  if (player.triggerHit()) {
+    render();
+    updateControls();
   }
 }
 
-hitButton.addEventListener('click', triggerHit);
+function handleCanvasClick(event) {
+  if (!ready || player.paused || player.reducedMotion) return;
+  const rect = canvas.getBoundingClientRect();
+  const x = (event.clientX - rect.left) / rect.width * canvas.width;
+  const y = (event.clientY - rect.top) / rect.height * canvas.height;
+  if (x < 0 || y < 0 || x >= canvas.width || y >= canvas.height) return;
+  if (context.getImageData(Math.floor(x), Math.floor(y), 1, 1).data[3] > 65) triggerHit();
+}
 
-canvas.addEventListener('click', (event) => {
-  if (hitTest(event)) triggerHit();
+playButton.addEventListener('click', () => {
+  player.paused = !player.paused;
+  playButton.textContent = player.paused ? 'Reprendre' : 'Mettre en pause';
+  playButton.setAttribute('aria-pressed', String(player.paused));
+  updateControls();
 });
+blinkButton.addEventListener('click', () => {
+  if (ready && player.triggerBlink()) updateControls();
+});
+hitButton.addEventListener('click', triggerHit);
+canvas.addEventListener('click', handleCanvasClick);
 canvas.addEventListener('keydown', (event) => {
   if (event.key !== 'Enter' && event.key !== ' ') return;
   event.preventDefault();
   triggerHit();
 });
-
-blinkButton.addEventListener('click', () => {
-  if (motion.playing && !motion.reducedMotion) {
-    blinkController.blinkNow(motion.elapsed);
-  }
+speedInput.addEventListener('input', () => {
+  player.setSpeed(Number(speedInput.value));
+  speedOutput.textContent = `${speedInput.value} %`;
 });
+if (typeof motionQuery.addEventListener === 'function') {
+  motionQuery.addEventListener('change', (event) => {
+    player.setReducedMotion(event.matches);
+    render();
+    updateControls();
+  });
+}
 
-layersButton.addEventListener('click', () => {
-  motion.targetExploded = motion.targetExploded ? 0 : 1;
-  layersButton.textContent = motion.targetExploded ? 'Réassembler' : 'Voir les calques';
-  layersButton.setAttribute('aria-pressed', String(Boolean(motion.targetExploded)));
-});
-
-intensityInput.addEventListener('input', () => {
-  motion.intensity = Number(intensityInput.value) / 100;
-  intensityValue.textContent = `${intensityInput.value} %`;
-});
-
-stage.addEventListener('pointermove', handlePointer);
-stage.addEventListener('pointerleave', () => {
-  motion.targetPointerX = 0;
-  motion.targetPointerY = 0;
-});
-
-Promise.all([Promise.all(imageNames.map(loadImage)), loadHitSprite()])
-  .then(([images, sprite]) => {
-    hitSprite = sprite;
-    for (const [name, image] of images) assets.set(name, image);
-    canvas.width = CANVAS.width * 3;
-    canvas.height = CANVAS.height * 3;
-    context.setTransform(3, 0, 0, 3, 0, 0);
-    context.imageSmoothingEnabled = true;
-    context.imageSmoothingQuality = 'high';
-    status.textContent = motion.reducedMotion ? 'Idle · animations réduites' : 'Idle · animé';
-    updateHitButtonAvailability();
-    requestAnimationFrame(frame);
+loadSprite('hit', ANIMATION_CLIPS.hit)
+  .then(([, hitImage]) => {
+    const atlases = buildAnimationAtlases(hitImage, FRAME_SIZE.width, FRAME_SIZE.height);
+    for (const [name, image] of Object.entries(atlases)) sprites.set(name, image);
+    ready = true;
+    render();
+    updateControls();
+    window.requestAnimationFrame(frame);
   })
   .catch((error) => {
+    errorMessage.textContent = error.message;
     status.textContent = 'Erreur de chargement';
-    document.querySelector('#error-message').textContent = error.message;
   });

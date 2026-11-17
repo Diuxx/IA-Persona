@@ -4,57 +4,54 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="color-scheme" content="dark" />
-  <title>Nuage — idle animé</title>
+  <title>IA-Persona — animations 2D</title>
   <link rel="stylesheet" href="./styles.css" />
-  <script src="./eye-blink-controller.js" defer></script>
-  <script src="./hit-controller.js" defer></script>
+  <script src="./animation-player.js" defer></script>
+  <script src="./sprite-atlas.js" defer></script>
   <script src="./app.js" defer></script>
 </head>
 <body>
   <main class="page">
     <header class="site-header">
       <div class="brand"><span class="brand-mark" aria-hidden="true"></span> NUAGE <span class="brand-separator">/</span> animation lab</div>
-      <span class="version">Prototype 03</span>
+      <span class="version">Prototype 04</span>
     </header>
-
     <div class="layout">
       <section class="preview-card" aria-label="Prévisualisation du nuage animé">
         <div class="card-topline">
           <div class="live"><span class="live-dot"></span> <span id="status" role="status">Chargement…</span></div>
-          <span class="mono">181 × 205 · sprites PNG</span>
+          <span class="mono">250 × 251 · spritesheets</span>
         </div>
         <div class="stage" id="stage">
-          <canvas id="mascot" width="543" height="705" role="button" tabindex="0" aria-label="Cliquez sur le nuage pour lui faire une surprise. Appuyez sur Entrée ou Espace pour interagir"></canvas>
+          <canvas id="mascot" width="750" height="753" role="button" tabindex="0" aria-label="Cliquer sur le nuage pour déclencher l'explosion. Entrée ou Espace au clavier."></canvas>
           <div class="stage-subtitle">UN PEU VÉNÈRE. TOUJOURS LÀ.</div>
         </div>
         <p class="error" id="error-message" aria-live="polite"></p>
       </section>
-
       <aside class="controls-card">
-        <p class="eyebrow">ANIMATION / IDLE</p>
+        <p class="eyebrow">ANIMATIONS / 2D</p>
         <h1>Un nuage<br><span>vivant.</span></h1>
-        <p class="intro">Le nuage flotte, respire et cligne de son œil unique. Cliquez directement sur lui pour déclencher une réaction de surprise inspirée du mouvement « Hit ».</p>
+        <p class="intro">Une même identité graphique pour la lévitation, le clignement de l'œil unique et l'explosion au clic. Le moteur ne fait que lire des images complètes.</p>
         <div class="control-group">
-          <label for="intensity"><span>Intensité du mouvement</span><output id="intensity-value" for="intensity">100 %</output></label>
-          <input id="intensity" type="range" min="0" max="150" step="5" value="100" />
-          <div class="range-ends"><span>Discret</span><span>Expressif</span></div>
+          <label for="speed"><span>Vitesse des animations</span><output id="speed-value" for="speed">100 %</output></label>
+          <input id="speed" type="range" min="50" max="150" step="5" value="100" />
+          <div class="range-ends"><span>Lent</span><span>Rapide</span></div>
         </div>
         <div class="button-group">
-          <button id="play-toggle" type="button">Mettre en pause</button>
-          <button id="layers-toggle" type="button" class="secondary">Voir les calques</button>
-          <button id="blink-trigger" type="button" class="secondary">Tester le clignement</button>
+          <button id="play-toggle" type="button" disabled>Mettre en pause</button>
+          <button id="blink-trigger" type="button" class="secondary" disabled>Cligner de l'œil</button>
           <button id="hit-trigger" type="button" class="secondary" disabled>Déclencher l’explosion</button>
         </div>
-        <p class="hint">« Voir les calques » écarte doucement les parties découpées pour inspecter la structure du personnage.</p>
+        <p class="hint">Clique sur le nuage, ou utilise le bouton d'explosion. Les animations reviennent automatiquement à l'état idle.</p>
         <div class="divider"></div>
-        <p class="eyebrow">CALQUES DÉCOUPÉS</p>
-        <div class="layer-tags" aria-label="Éléments découpés">
-          <span>Corps</span><span>3 volumes</span><span>Œil unique</span><span>2 pattes</span><span>2 gouttelettes</span><span>4 particules</span>
+        <p class="eyebrow">ANIMATIONS DISPONIBLES</p>
+        <div class="layer-tags" aria-label="Animations en frames">
+          <span>Idle · 24 frames</span><span>Blink · 8 frames</span><span>Hit · 8 frames</span>
         </div>
-        <p class="footnote">Animation en Canvas 2D natif. Aucun framework ni dépendance externe.</p>
+        <p class="footnote">Canvas 2D natif. Trois spritesheets, un seul moteur, aucune bibliothèque.</p>
       </aside>
     </div>
-    <footer>PNG source fourni par l'utilisateur · animation expérimentale · utilisation locale</footer>
+    <footer>Animation en frames · assets de référence conservés · utilisation locale</footer>
   </main>
 </body>
 </html>
