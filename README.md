@@ -1,63 +1,49 @@
-# IA-Persona — animations 2D en spritesheets
+# IA-Persona — POC nuage de pixels vivants
 
-Un compagnon nuage noir à **œil unique**, animé exclusivement image par image sur Canvas 2D.
-Aucun framework ni étape de build JavaScript n'est nécessaire. Les spritesheets idle et blink sont générées **une seule fois au chargement** depuis la référence Hit, puis mises en cache en mémoire.
+Prototype expérimental remplaçant le lecteur de GIF et spritesheets : **chaque pixel visible du personnage original est un point simulé**.
 
-## Démarrer
+## Démarrage
 
-Ouvrir `index.html` dans un navigateur ou lancer un serveur statique :
+Ouvrir `index.html` directement ou lancer un serveur statique :
 
 ```bash
 python -m http.server 8000
 ```
 
-Puis ouvrir `http://localhost:8000`.
+Puis ouvrir `http://localhost:8000`. Aucun package npm ni service n'est nécessaire.
 
 ## Architecture
 
-| Fichier | Rôle |
-|---|---|
-| `animation-player.js` | Machine à états, vitesse, clignements et transitions. Ne manipule aucun pixel. |
-| `app.js` | Chargement, rendu de frames complètes et événements UI. |
-| `sprite-atlas.js` | Prépare au démarrage les frames idle/blink depuis la pose de référence, puis les met en cache. |
-| Atlas `idle` en mémoire | 24 frames complètes, 12 FPS, boucle de 2 s. |
-| Atlas `blink` en mémoire | 8 frames, 30 FPS, clignement naturel et doubles clignements occasionnels. |
-| `assets/hit-explosion-sprite.png` | 8 frames de l'explosion approuvée, 120 ms chacune. |
+- `source.png` : dessin original, conservé intact.
+- `tools/export_particle_map.py` : conversion *hors navigateur* en un tableau RLE de pixels colorés de taille 200×200 (Pillow nécessaire pour régénérer).
+- `assets/persona-map.js` : carte statique des pixels visibles ; **aucune lecture `getImageData`** ni problème CORS côté navigateur.
+- `particle-world.js` : simulation pure des forces, animations et couleurs, sans DOM.
+- `app.js` : Canvas 2D, boutons, contrôles et rafraîchissement en pas fixe 60 Hz.
+- `tests/particle-world.test.cjs` : tests de la simulation.
 
-Chaque frame mesure **250 × 251 pixels**. Les spritesheets ont un fond transparent. Les atlases idle/blink sont préparés **une seule fois**, et le moteur ne les recalcule jamais ensuite. L'application lit la frame complète via `drawImage` ; **aucune reconstruction des calques, déformation ni dessin du visage pendant le `requestAnimationFrame`**.
+La carte est classée en quatre types de pixels : transparent, nuage noir, masses grises et œil clair. Les pixels sont animés individuellement mais partagent un champ de mouvement cohérent. La résolution de la **forme source est 200×200**, au centre d'un Canvas de **400×400** pour laisser de la place à l'explosion.
 
-Les anciens `assets/body.png`, `assets/mouth.png`, etc. restent conservés comme **sources historiques** mais ne sont plus utilisés pour le rendu.
+## Interactions
 
-## Fonctionnement
+- **Révéler** : les points colorés apparaissent dispersés, puis retrouvent leur forme et leurs couleurs d'origine.
+- **Explosion** : une impulsion radiale disperse les points, qui reviennent sous l'effet d'un ressort amorti.
+- **Clic sur la créature / Entrée / Espace** : même explosion que le bouton.
+- **Idle** : lévitation et déformations douces, œil unique qui cligne à intervalles variables.
+- **Couleur** : teinte appliquée pendant les transitions, puis interpolée vers la palette originale.
+- **Élasticité, dispersion, pause, reset** : réglages du moteur en direct.
 
-- `idle` : lévitation/respiration en boucle ; `blink` automatique après un intervalle variable de 3,8 à 7,5 s.
-- `blink` : 8 frames, avec parfois un deuxième clignement.
-- `hit` : clic sur la créature, bouton « Déclencher l'explosion », ou Entrée/Espace sur le Canvas ; retourne à `idle` après 0,96 s.
-- Transitions : fondu court entre deux **frames complètes** quand l'état change.
-- Pause : l'horloge s'arrête ; les événements Hit/Blink sont bloqués.
-- Préférence système « réduire les animations » : affiche une pose idle fixe et bloque les réactions animées.
-- Réglage de vitesse : 50 à 150 %, partagé par toutes les animations.
-
-## Ajouter de nouvelles séquences
-
-Une nouvelle animation peut être chargée directement comme spritesheet complète via une entrée dans `ANIMATION_CLIPS`. Les états déjà présents sont construits à partir du même dessin pour rester cohérents.
+Les particules ne sont jamais recréées à chaque frame : seuls leurs états et le tampon d'affichage RGBA sont mis à jour. Pour une très grosse quantité de pixels ou des appareils peu puissants, une solution WebGL pourra être évaluée ultérieurement.
 
 ## Tests
 
 ```bash
 node --test tests/*.test.cjs
 node --check app.js
-node --check animation-player.js
+node --check particle-world.js
 ```
 
 ## Limites
 
-- Les idle/blink sont des frames dérivées de la pose finale de l'animation Hit. Pour une animation traditionnelle encore plus riche, on peut ultérieurement les remplacer par une séquence dessinée à la main.
-- Les sources historiques demeurent présentes pour ne pas perdre les éléments d'origine. Elles ne participent pas au moteur de rendu.
-- Aucun état `listening`, `thinking` ou `speaking`, ni connexion à Ollama pour le moment.
-
-## Compatibilité Canvas et origine des fichiers
-
-Le générateur de spritesheets ne lit plus les pixels des images chargées : il utilise uniquement `drawImage` et `globalCompositeOperation`. La zone de clic sur le nuage est estimée géométriquement, sans `getImageData`. Ainsi, l’application ne dépend plus de la lecture d’un Canvas potentiellement *tainted*.
-
-Pour éviter les restrictions propres à `file://`, utiliser de préférence un serveur statique : `python -m http.server 8000`.
+- Ce POC utilise une palette simplifiée de trois couleurs du dessin original. La silhouette reste reconnaissable mais les anticrénelages sont approximés ; la restitution exacte peut être affinée dans l'exporteur.
+- Les pixels sont animés indépendamment ; aux fortes dispersions, l'aspect est volontairement celui d'un nuage de poussière.
+- Aucun état LLM `thinking`, `listening` ou `speaking` ni connexion Ollama pour le moment.

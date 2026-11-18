@@ -64,3 +64,15 @@ footer { margin-top: 24px; text-align: center; color: #686570; font-size: 11px; 
 
 #mascot { cursor: pointer; }
 #mascot:focus-visible { outline: 2px solid #e0cfff; outline-offset: 4px; border-radius: 12px; }
+
+/* Particle POC: the internal 400² buffer keeps the original 200² pixels centered. */
+#mascot { aspect-ratio: 1; width: min(94%, 440px); image-rendering: pixelated; cursor: pointer; }
+.metrics { display: flex; gap: 14px; margin: 0 0 18px; }
+.metrics > div { display: flex; flex-direction: column; gap: 4px; padding: 11px 15px; background: #27232d; border: 1px solid #38323f; border-radius: 10px; }
+.metrics strong { font-size: 19px; color: #e7d9ff; font-variant-numeric: tabular-nums; }
+.metrics span { font-size: 11px; color: #a9a1b2; }
+.controls-stack { margin-top: 24px; display: grid; gap: 20px; }
+.color-group { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
+.color-group label { margin: 0; }
+input[type=color] { height: 38px; width: 64px; cursor: pointer; padding: 2px; border-radius: 8px; background: #302c35; border: 1px solid #484150; }
+button:disabled { opacity: .5; cursor: not-allowed; }

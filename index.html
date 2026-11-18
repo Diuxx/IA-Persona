@@ -1,57 +1,67 @@
 <!doctype html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="color-scheme" content="dark" />
-  <title>IA-Persona — animations 2D</title>
+  <title>IA-Persona — Nuage de particules</title>
   <link rel="stylesheet" href="./styles.css" />
-  <script src="./animation-player.js" defer></script>
-  <script src="./sprite-atlas.js" defer></script>
-  <script src="./app.js" defer></script>
+  <script defer src="./assets/persona-map.js"></script>
+  <script defer src="./particle-world.js"></script>
+  <script defer src="./app.js"></script>
 </head>
 <body>
   <main class="page">
     <header class="site-header">
-      <div class="brand"><span class="brand-mark" aria-hidden="true"></span> NUAGE <span class="brand-separator">/</span> animation lab</div>
-      <span class="version">Prototype 04</span>
+      <div class="brand"><span class="brand-mark" aria-hidden="true"></span> IA-PERSONA <span class="brand-separator">/</span> particle lab</div>
+      <span class="version">POC 05 · simulation pixel</span>
     </header>
     <div class="layout">
-      <section class="preview-card" aria-label="Prévisualisation du nuage animé">
+      <section class="preview-card" aria-label="Nuage de particules interactif">
         <div class="card-topline">
-          <div class="live"><span class="live-dot"></span> <span id="status" role="status">Chargement…</span></div>
-          <span class="mono">250 × 251 · spritesheets</span>
+          <div class="live"><span class="live-dot"></span> <span id="status" role="status">Initialisation…</span></div>
+          <span class="mono"><span id="fps">—</span> FPS</span>
         </div>
         <div class="stage" id="stage">
-          <canvas id="mascot" width="750" height="753" role="button" tabindex="0" aria-label="Cliquer sur le nuage pour déclencher l'explosion. Entrée ou Espace au clavier."></canvas>
-          <div class="stage-subtitle">UN PEU VÉNÈRE. TOUJOURS LÀ.</div>
+          <canvas id="mascot" width="400" height="400" tabindex="0" role="button" aria-label="Cliquer sur le nuage pour le disperser. Entrée ou Espace déclenche l'explosion."></canvas>
+          <div class="stage-subtitle">UNE CRÉATURE FAITE DE POINTS.</div>
         </div>
-        <p class="error" id="error-message" aria-live="polite"></p>
       </section>
       <aside class="controls-card">
-        <p class="eyebrow">ANIMATIONS / 2D</p>
-        <h1>Un nuage<br><span>vivant.</span></h1>
-        <p class="intro">Une même identité graphique pour la lévitation, le clignement de l'œil unique et l'explosion au clic. Le moteur ne fait que lire des images complètes.</p>
-        <div class="control-group">
-          <label for="speed"><span>Vitesse des animations</span><output id="speed-value" for="speed">100 %</output></label>
-          <input id="speed" type="range" min="50" max="150" step="5" value="100" />
-          <div class="range-ends"><span>Lent</span><span>Rapide</span></div>
+        <p class="eyebrow">PHYSIQUE / MATIÈRE VIVANTE</p>
+        <h1>Un nuage<br><span>de pixels.</span></h1>
+        <p class="intro">Chaque point possède une position, une vitesse et une couleur. Les particules peuvent se disperser, se teinter puis reconstituer le personnage.</p>
+        <div class="metrics">
+          <div><strong id="particle-count">—</strong><span>particules</span></div>
+          <div><strong>200 × 200</strong><span>grille source</span></div>
         </div>
         <div class="button-group">
-          <button id="play-toggle" type="button" disabled>Mettre en pause</button>
-          <button id="blink-trigger" type="button" class="secondary" disabled>Cligner de l'œil</button>
-          <button id="hit-trigger" type="button" class="secondary" disabled>Déclencher l’explosion</button>
+          <button id="reveal-trigger" type="button">Révéler le personnage</button>
+          <button id="explode-trigger" type="button" class="secondary">Explosion</button>
+          <button id="reset-trigger" type="button" class="secondary">Réinitialiser</button>
+          <button id="pause-button" type="button" class="secondary">Pause</button>
         </div>
-        <p class="hint">Clique sur le nuage, ou utilise le bouton d'explosion. Les animations reviennent automatiquement à l'état idle.</p>
+        <div class="controls-stack">
+          <div class="control-group">
+            <label for="elasticity"><span>Élasticité</span><output id="elasticity-value" for="elasticity">30</output></label>
+            <input id="elasticity" type="range" min="5" max="70" step="1" value="30" />
+          </div>
+          <div class="control-group">
+            <label for="dispersion"><span>Dispersion</span><output id="dispersion-value" for="dispersion">100 %</output></label>
+            <input id="dispersion" type="range" min="30" max="200" step="5" value="100" />
+          </div>
+          <div class="control-group color-group">
+            <label for="accent"><span>Couleur pendant la transformation</span></label>
+            <input id="accent" type="color" value="#a58afc" />
+          </div>
+        </div>
+        <p class="hint">Le mouvement est calculé en continu, sans GIF ni spritesheet. Cliquez sur le nuage, ou testez les boutons.</p>
         <div class="divider"></div>
-        <p class="eyebrow">ANIMATIONS DISPONIBLES</p>
-        <div class="layer-tags" aria-label="Animations en frames">
-          <span>Idle · 24 frames</span><span>Blink · 8 frames</span><span>Hit · 8 frames</span>
-        </div>
-        <p class="footnote">Canvas 2D natif. Trois spritesheets, un seul moteur, aucune bibliothèque.</p>
+        <p class="eyebrow">MOTEUR</p>
+        <div class="layer-tags"><span>Ressort</span><span>Amortissement</span><span>Morphing couleur</span><span>Clignement</span></div>
       </aside>
     </div>
-    <footer>Animation en frames · assets de référence conservés · utilisation locale</footer>
+    <footer>POC expérimental · Source PNG originale préservée · Canvas 2D</footer>
   </main>
 </body>
 </html>
