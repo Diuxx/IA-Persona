@@ -1,53 +1,49 @@
-# Nuage — premier idle en JavaScript
+# IA-Persona — POC nuage de pixels vivants
 
-Démo HTML/CSS/Canvas 2D construite à partir du PNG de référence fourni.
-Pas de bibliothèque à installer.
+Prototype expérimental remplaçant le lecteur de GIF et spritesheets : **chaque pixel visible du personnage original est un point simulé**.
 
-## Démarrer
+## Démarrage
 
-Ouvrir `index.html` dans un navigateur, ou lancer un petit serveur statique :
+Ouvrir `index.html` directement ou lancer un serveur statique :
 
 ```bash
-cd IA-Persona
 python -m http.server 8000
 ```
 
-Puis accéder à `http://localhost:8000`.
+Puis ouvrir `http://localhost:8000`. Aucun package npm ni service n'est nécessaire.
 
-## Structure
+## Architecture
 
-- `index.html` : interface de démonstration.
-- `styles.css` : présentation responsive.
-- `app.js` : chargement et animation continue des calques sur Canvas 2D.
-- `eye-blink-controller.js` : clignement naturel de l’œil unique, indépendant de la lévitation et testé sans navigateur.
-- `assets/*.png` : 13 couches PNG transparentes, **alignées sur le repère d'origine**. Elles ont toutes la même taille (724 × 820 px, source multipliée par quatre). Cette méthode évite d'avoir à repositionner chaque couche au pixel près.
-- `assets/cropped/*.png` : les mêmes calques, recadrés pour les réutiliser dans un autre moteur.
-- `assets/manifest.json` : position et dimensions de chaque calque recadré, exprimées en pixels de l'image d'origine.
-- `source.png` : capture de référence originale (181 × 205 px).
-- `tools/split_assets.py` : script de découpage avec Pillow, NumPy et OpenCV.
+- `source.png` : dessin original, conservé intact.
+- `tools/export_particle_map.py` : conversion *hors navigateur* en un tableau RLE de pixels colorés de taille 200×200 (Pillow nécessaire pour régénérer).
+- `assets/persona-map.js` : carte statique des pixels visibles ; **aucune lecture `getImageData`** ni problème CORS côté navigateur.
+- `particle-world.js` : simulation pure des forces, animations et couleurs, sans DOM.
+- `app.js` : Canvas 2D, boutons, contrôles et rafraîchissement en pas fixe 60 Hz.
+- `tests/particle-world.test.cjs` : tests de la simulation.
 
-## Comportement idle
+La carte est classée en quatre types de pixels : transparent, nuage noir, masses grises et œil clair. Les pixels sont animés individuellement mais partagent un champ de mouvement cohérent. La résolution de la **forme source est 200×200**, au centre d'un Canvas de **400×400** pour laisser de la place à l'explosion.
 
-Les animations sont superposées plutôt que remplacées :
+## Interactions
 
-- flottement vertical sur environ 3,8 s ;
-- très légère respiration et inclinaison du corps ;
-- faible oscillation indépendante des trois volumes gris ;
-- animation douce des pattes et de l’œil unique ;
-- clignement par compression verticale du calque original en une fine fente, toutes les 3,8 à 7,5 secondes ;
-- quelques doubles clignements, et un regard très légèrement mobile ;
-- suivi très discret du pointeur, avec amortissement à l’entrée et au départ, sans saut ni remise à zéro de la lévitation ;
-- gouttelettes et particules avec périodes différentes ;
-- micro-contraction ponctuelle et effet de profondeur limité au survol.
+- **Révéler** : les points colorés apparaissent dispersés, puis retrouvent leur forme et leurs couleurs d'origine.
+- **Explosion** : une impulsion radiale disperse les points, qui reviennent sous l'effet d'un ressort amorti.
+- **Clic sur la créature / Entrée / Espace** : même explosion que le bouton.
+- **Idle** : lévitation et déformations douces, œil unique qui cligne à intervalles variables.
+- **Couleur** : teinte appliquée pendant les transitions, puis interpolée vers la palette originale.
+- **Élasticité, dispersion, pause, reset** : réglages du moteur en direct.
 
-Contrôles : intensité de 0 à 150 %, pause, vue éclatée des calques et clignement manuel.
+Les particules ne sont jamais recréées à chaque frame : seuls leurs états et le tampon d'affichage RGBA sont mis à jour. Pour une très grosse quantité de pixels ou des appareils peu puissants, une solution WebGL pourra être évaluée ultérieurement.
 
-Tester le contrôleur : `node --test tests/*.test.cjs`.
+## Tests
+
+```bash
+node --test tests/*.test.cjs
+node --check app.js
+node --check particle-world.js
+```
 
 ## Limites
 
-La source est une capture **aplatie de seulement 181 × 205 pixels**. Le calque historique `assets/mouth.png` représente en réalité **un seul œil**, pas une bouche ni deux yeux. On conserve ce nom de fichier pour ne pas casser le découpage existant. Les volumes séparés ne disposent pas de dessin sous les zones cachées. Les transformations restent donc volontairement discrètes ; des mouvements plus amples exigeraient de redessiner le personnage en vectoriel ou de compléter les zones occultées.
-
-La démo n'est pas encore connectée à Ollama et ne contient pas les états `thinking`, `listening` ou `speaking`.
-
-Le réglage de réduction des mouvements du système désactive l'animation idle automatiquement.
+- Ce POC utilise une palette simplifiée de trois couleurs du dessin original. La silhouette reste reconnaissable mais les anticrénelages sont approximés ; la restitution exacte peut être affinée dans l'exporteur.
+- Les pixels sont animés indépendamment ; aux fortes dispersions, l'aspect est volontairement celui d'un nuage de poussière.
+- Aucun état LLM `thinking`, `listening` ou `speaking` ni connexion Ollama pour le moment.

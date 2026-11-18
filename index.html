@@ -1,58 +1,67 @@
 <!doctype html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="color-scheme" content="dark" />
-  <title>Nuage — idle animé</title>
+  <title>IA-Persona — Nuage de particules</title>
   <link rel="stylesheet" href="./styles.css" />
-  <script src="./eye-blink-controller.js" defer></script>
-  <script src="./app.js" defer></script>
+  <script defer src="./assets/persona-map.js"></script>
+  <script defer src="./particle-world.js"></script>
+  <script defer src="./app.js"></script>
 </head>
 <body>
   <main class="page">
     <header class="site-header">
-      <div class="brand"><span class="brand-mark" aria-hidden="true"></span> NUAGE <span class="brand-separator">/</span> animation lab</div>
-      <span class="version">Prototype 02</span>
+      <div class="brand"><span class="brand-mark" aria-hidden="true"></span> IA-PERSONA <span class="brand-separator">/</span> particle lab</div>
+      <span class="version">POC 05 · simulation pixel</span>
     </header>
-
     <div class="layout">
-      <section class="preview-card" aria-label="Prévisualisation du nuage animé">
+      <section class="preview-card" aria-label="Nuage de particules interactif">
         <div class="card-topline">
-          <div class="live"><span class="live-dot"></span> <span id="status" role="status">Chargement…</span></div>
-          <span class="mono">181 × 205 · sprites PNG</span>
+          <div class="live"><span class="live-dot"></span> <span id="status" role="status">Initialisation…</span></div>
+          <span class="mono"><span id="fps">—</span> FPS</span>
         </div>
         <div class="stage" id="stage">
-          <canvas id="mascot" width="543" height="705" role="img" aria-label="Mascotte nuage noir flottant, en animation idle"></canvas>
-          <div class="stage-subtitle">UN PEU VÉNÈRE. TOUJOURS LÀ.</div>
+          <canvas id="mascot" width="400" height="400" tabindex="0" role="button" aria-label="Cliquer sur le nuage pour le disperser. Entrée ou Espace déclenche l'explosion."></canvas>
+          <div class="stage-subtitle">UNE CRÉATURE FAITE DE POINTS.</div>
         </div>
-        <p class="error" id="error-message" aria-live="polite"></p>
       </section>
-
       <aside class="controls-card">
-        <p class="eyebrow">ANIMATION / IDLE</p>
-        <h1>Un nuage<br><span>vivant.</span></h1>
-        <p class="intro">Le nuage flotte et respire. Son œil unique cligne naturellement, sans interrompre les autres mouvements.</p>
-        <div class="control-group">
-          <label for="intensity"><span>Intensité du mouvement</span><output id="intensity-value" for="intensity">100 %</output></label>
-          <input id="intensity" type="range" min="0" max="150" step="5" value="100" />
-          <div class="range-ends"><span>Discret</span><span>Expressif</span></div>
+        <p class="eyebrow">PHYSIQUE / MATIÈRE VIVANTE</p>
+        <h1>Un nuage<br><span>de pixels.</span></h1>
+        <p class="intro">Chaque point possède une position, une vitesse et une couleur. Les particules peuvent se disperser, se teinter puis reconstituer le personnage.</p>
+        <div class="metrics">
+          <div><strong id="particle-count">—</strong><span>particules</span></div>
+          <div><strong>200 × 200</strong><span>grille source</span></div>
         </div>
         <div class="button-group">
-          <button id="play-toggle" type="button">Mettre en pause</button>
-          <button id="layers-toggle" type="button" class="secondary">Voir les calques</button>
-          <button id="blink-trigger" type="button" class="secondary">Tester le clignement</button>
+          <button id="reveal-trigger" type="button">Révéler le personnage</button>
+          <button id="explode-trigger" type="button" class="secondary">Explosion</button>
+          <button id="reset-trigger" type="button" class="secondary">Réinitialiser</button>
+          <button id="pause-button" type="button" class="secondary">Pause</button>
         </div>
-        <p class="hint">« Voir les calques » écarte doucement les parties découpées pour inspecter la structure du personnage.</p>
+        <div class="controls-stack">
+          <div class="control-group">
+            <label for="elasticity"><span>Élasticité</span><output id="elasticity-value" for="elasticity">30</output></label>
+            <input id="elasticity" type="range" min="5" max="70" step="1" value="30" />
+          </div>
+          <div class="control-group">
+            <label for="dispersion"><span>Dispersion</span><output id="dispersion-value" for="dispersion">100 %</output></label>
+            <input id="dispersion" type="range" min="30" max="200" step="5" value="100" />
+          </div>
+          <div class="control-group color-group">
+            <label for="accent"><span>Couleur pendant la transformation</span></label>
+            <input id="accent" type="color" value="#a58afc" />
+          </div>
+        </div>
+        <p class="hint">Le mouvement est calculé en continu, sans GIF ni spritesheet. Cliquez sur le nuage, ou testez les boutons.</p>
         <div class="divider"></div>
-        <p class="eyebrow">CALQUES DÉCOUPÉS</p>
-        <div class="layer-tags" aria-label="Éléments découpés">
-          <span>Corps</span><span>3 volumes</span><span>Œil unique</span><span>2 pattes</span><span>2 gouttelettes</span><span>4 particules</span>
-        </div>
-        <p class="footnote">Animation en Canvas 2D natif. Aucun framework ni dépendance externe.</p>
+        <p class="eyebrow">MOTEUR</p>
+        <div class="layer-tags"><span>Ressort</span><span>Amortissement</span><span>Morphing couleur</span><span>Clignement</span></div>
       </aside>
     </div>
-    <footer>PNG source fourni par l'utilisateur · animation expérimentale · utilisation locale</footer>
+    <footer>POC expérimental · Source PNG originale préservée · Canvas 2D</footer>
   </main>
 </body>
 </html>
