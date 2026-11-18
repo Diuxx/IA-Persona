@@ -53,9 +53,17 @@ function renderFrame(name, frame, alpha = 1) {
 function render() {
   const current = player.getPresentation();
   context.clearRect(0, 0, FRAME_SIZE.width, FRAME_SIZE.height);
-  const previousOpacity = current.previous?.alpha ?? 0;
-  if (current.previous) renderFrame(current.previous.state, current.previous.frame, previousOpacity);
-  renderFrame(current.state, current.frame, 1 - previousOpacity);
+
+  if (!current.previous) {
+    renderFrame(current.state, current.frame);
+    return;
+  }
+
+  // L'ancien dessin reste opaque : deux calques à 50 % créent un flash à 75 % d'opacité.
+  if (current.previous.alpha > 0) {
+    renderFrame(current.previous.state, current.previous.frame);
+  }
+  renderFrame(current.state, current.frame, 1 - current.previous.alpha);
 }
 
 function updateControls() {
