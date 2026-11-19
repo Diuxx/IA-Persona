@@ -38,6 +38,25 @@ La V2.5 conserve **43 frames en 1,72 s à 1×**, une population visible dynamiqu
 
 > Les sections historiques V2–V2.5 ci-dessous documentent les étapes précédentes : certains anciens chemins et contrôles n'existent plus à l'emplacement indiqué. Utiliser cette section et `docs/PROJECT.md` pour l'architecture courante.
 
+## Analyse des mouvements (V1, hors navigateur)
+
+Un analyseur indépendant du rendu reconstruit la géométrie et les trajectoires
+des poses cibles précompilées. Il mesure, pour les **43 frames** et les **11 régions**
+anatomiques, les centres, amplitudes, vitesses, accélérations, surfaces, mouvements
+relatifs, apparitions/disparitions, corrélations temporelles et qualité du bouclage.
+
+```bash
+node tools/analyze_motion.cjs
+node tools/analyze_motion.cjs --check
+node --test tests/motion-analysis*.test.cjs
+```
+
+Sortie : `assets/animations/analysis/idle.motion.json`, un **profil descriptif
+pour de futurs agents IA**, sans remplacement du fichier de poses
+`assets/animations/idle-targets.js` ni apprentissage automatique à ce stade.
+Pour le format, les limites et l'ajout d'une future animation, consulter
+[`docs/motion-analysis-v1.md`](docs/motion-analysis-v1.md).
+
 ## Interactions
 
 - **Révéler** : les points colorés apparaissent dispersés, puis retrouvent leur forme et leurs couleurs d'origine.
