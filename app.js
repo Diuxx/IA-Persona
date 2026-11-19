@@ -2,7 +2,11 @@
 const canvas = document.querySelector('#mascot');
 const context = canvas.getContext('2d', { alpha: true });
 const world = new ParticleWorld(PERSONA_PIXEL_MAP, { anatomy: PERSONA_ANATOMY });
-const controller = new BehaviorController(world);
+let targetPlayer;
+let controller;
+async function initializePersona() {
+  targetPlayer = await TargetAnimationPlayer.create(world, PERSONA_IDLE_TARGETS);
+  controller = new BehaviorController(world, { animationPlayer: targetPlayer });
 const frame = context.createImageData(world.size, world.size);
 const status = document.querySelector('#status');
 const count = document.querySelector('#particle-count');
@@ -30,6 +34,10 @@ const energyControl = document.querySelector('#behavior-energy');
 const energyValue = document.querySelector('#behavior-energy-value');
 const voiceControl = document.querySelector('#voice-level');
 const voiceValue = document.querySelector('#voice-level-value');
+const roleTargetControl = document.querySelector('#role-target');
+const animationStatus = document.querySelector('#animation-status');
+const playIdleButton = document.querySelector('#play-idle');
+const stopIdleButton = document.querySelector('#stop-idle');
 
 canvas.width = world.size;
 canvas.height = world.size;
@@ -37,7 +45,16 @@ context.imageSmoothingEnabled = false;
 count.textContent = world.particles.length.toLocaleString('fr-FR');
 linkCount.textContent = world.cohesionField.linkCount.toLocaleString('fr-FR');
 document.querySelector('#anatomy-count').textContent = world.anatomy.names.length;
+for (const role of ROLE_NAMES) {
+  if (!Object.values(world.getRoleAssignments()).some(assigned => assigned.includes(role))) continue;
+  const option = document.createElement('option');
+  option.value = role;
+  option.textContent = role;
+  roleTargetControl.append(option);
+}
 
+
+const roleLegendLabels = new Map();
 for (let index = 0; index < world.anatomy.names.length; index += 1) {
   const name = world.anatomy.names[index];
   const sample = world.anatomy.profiles[index].debug;
@@ -45,9 +62,20 @@ for (let index = 0; index < world.anatomy.names.length; index += 1) {
   const swatch = document.createElement('i');
   swatch.style.backgroundColor = `rgb(${sample.join(',')})`;
   swatch.setAttribute('aria-hidden', 'true');
-  item.append(swatch, `${name} (${world.anatomy.counts[index].toLocaleString('fr-FR')})`);
+  const roleLabel = document.createElement('span');
+  roleLabel.textContent = `${name} (${world.anatomy.counts[index].toLocaleString('fr-FR')}) · ${world.roles.getRoles(name).join(', ')}`;
+  item.append(swatch, roleLabel);
+  roleLegendLabels.set(name, roleLabel);
   anatomyLegend.append(item);
 }
+function refreshRoleLegend() {
+  for (let index = 0; index < world.anatomy.names.length; index += 1) {
+    const name = world.anatomy.names[index];
+    roleLegendLabels.get(name).textContent =
+      `${name} (${world.anatomy.counts[index].toLocaleString('fr-FR')}) · ${world.roles.getRoles(name).join(', ')}`;
+  }
+}
+
 anatomyPreview.addEventListener('change', () => {
   frameOptions.showAnatomy = anatomyPreview.checked;
   anatomyLegend.hidden = !anatomyPreview.checked;
@@ -72,6 +100,7 @@ function updateStatus() {
   status.textContent = world.paused ? 'En pause' :
     world.mode === 'reveal' ? 'Révélation · couleurs en mouvement' :
     world.mode === 'explode' ? 'Explosion · retour élastique' :
+    targetPlayer.playing ? 'Idle · animation reconstruite par les pixels' :
     BEHAVIOR_LABELS[controller.state];
 }
 
@@ -83,6 +112,11 @@ function syncBehaviorControls() {
   voiceControl.value = Math.round(snapshot.voiceLevel * 100);
   voiceValue.textContent = `${voiceControl.value} %`;
   voiceControl.disabled = snapshot.state !== 'speaking';
+  refreshRoleLegend();
+  animationStatus.textContent = targetPlayer.playing
+    ? `Frame ${targetPlayer.frame + 1}/${targetPlayer.frames.length} · 3,2 s en boucle`
+    : 'Animation arrêtée · physique libre';
+  stopIdleButton.disabled = !targetPlayer.playing;
   updateStatus();
 }
 
@@ -116,6 +150,10 @@ function animate(timestamp) {
   simulationTimeTotal += renderStart - simulationStart;
   renderingTimeTotal += renderEnd - renderStart;
   updateStatus();
+  animationStatus.textContent = targetPlayer.playing
+    ? `Frame ${targetPlayer.frame + 1}/${targetPlayer.frames.length} · 3,2 s en boucle`
+    : 'Animation arrêtée · physique libre';
+  stopIdleButton.disabled = !targetPlayer.playing;
 
   frameCounter++;
   if (!fpsStart) fpsStart = timestamp;
@@ -147,6 +185,16 @@ document.querySelector('#explode-trigger').addEventListener('click', triggerExpl
 document.querySelector('#reveal-trigger').addEventListener('click', triggerReveal);
 document.querySelector('#reset-trigger').addEventListener('click', () => {
   controller.reset();
+  controller.dispatch({ type: 'animation', name: 'idle' });
+  syncBehaviorControls();
+});
+
+playIdleButton.addEventListener('click', () => {
+  controller.dispatch({ type: 'animation', name: 'idle' });
+  syncBehaviorControls();
+});
+stopIdleButton.addEventListener('click', () => {
+  controller.dispatch({ type: 'animation', action: 'stop' });
   syncBehaviorControls();
 });
 
@@ -166,11 +214,13 @@ voiceControl.addEventListener('input', () => {
 });
 
 document.querySelector('#attract-trigger').addEventListener('click', () => {
-  controller.trigger('field', { x: world.size / 2, y: world.size / 2, radius: 145, strength: -100 });
+  controller.trigger('field', { x: world.size / 2, y: world.size / 2, radius: 145,
+    strength: -100, ...(roleTargetControl.value ? { role: roleTargetControl.value } : {}) });
 });
 
 document.querySelector('#repel-trigger').addEventListener('click', () => {
-  controller.trigger('field', { x: world.size / 2, y: world.size / 2, radius: 145, strength: 100 });
+  controller.trigger('field', { x: world.size / 2, y: world.size / 2, radius: 145,
+    strength: 100, ...(roleTargetControl.value ? { role: roleTargetControl.value } : {}) });
 });
 
 pauseButton.addEventListener('click', () => {
@@ -239,9 +289,16 @@ window.persona = Object.freeze({
     return accepted;
   },
   getSnapshot() { return controller.getSnapshot(); },
+  getRoleAssignments() { return world.getRoleAssignments(); },
 });
 
 syncBehaviorControls();
 render();
-if (!world.paused) controller.trigger('reveal');
+if (!world.paused) controller.dispatch({ type: 'animation', name: 'idle' });
 requestAnimationFrame(animate);
+
+}
+initializePersona().catch(error => {
+  document.querySelector('#status').textContent = 'Échec du chargement de l’animation';
+  console.error('IA-Persona initialization failed:', error);
+});

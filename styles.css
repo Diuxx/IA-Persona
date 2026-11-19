@@ -96,3 +96,14 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .behavior-actions { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; }
 .behavior-actions button { min-width: 0; font-size: 11px; }
 @media (max-width: 420px) { .behavior-actions { grid-template-columns: 1fr; } }
+
+/* V2.4 : controls dedicated to reference-pose playback. */
+.target-animation-controls { margin: 18px 0 20px; padding: 14px; border-radius: 12px; border: 1px solid #454050; background: #292530; }
+.target-animation-controls .eyebrow { margin: 0 0 6px; }
+.target-animation-controls .hint { margin: 0 0 12px; }
+.target-animation-controls .behavior-actions { margin: 0; }
+.target-animation-status { margin: 12px 0 0; font-size: 11px; color: #b5adbf; font-variant-numeric: tabular-nums; }
+/* Keep the creature visible even as the control panel grows taller. */
+.preview-card { align-self: start; }
+.stage { flex: none; height: min(650px, 65vh); min-height: 480px; }
+@media (max-width: 750px) { .stage { height: 440px; min-height: 360px; } }
