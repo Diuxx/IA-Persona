@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Compile tracked, fixed-count particle poses from the user's idle PNG sequence.
+"""Compile tracked particle poses from the user's full idle PNG sequence.
 
-The source archive contains two nearly identical cycles of 21/22 frames.
-Keep frames 1–22 (the last pose closes the loop), so idle doesn't repeat twice.
-Identity matching happens offline; the browser only interpolates targets.
+Every source PNG becomes one target pose. We keep the 43 provided frames in
+order to preserve the user's original timing and smoothness. Identity matching
+happens offline; the browser only interpolates between consecutive targets.
 """
 from __future__ import annotations
 
@@ -28,8 +28,8 @@ SIZE = 200
 ART_BOUNDS = (0, 8, 190, 225)  # Fixed for ALL frames: keep top droplets + feet, exclude lettering.
 BACKGROUND = 102
 SOURCE_FRAME_COUNT = 43
-LOOP_FRAMES = 22
-FRAME_DURATION_MS = 80
+LOOP_FRAMES = 43
+FRAME_DURATION_MS = 40
 MAX_SOURCE_BYTES = 1_000_000
 
 
@@ -165,25 +165,74 @@ def match_next(previous_xy: np.ndarray, new_xy: np.ndarray) -> np.ndarray:
     return selected
 
 
-def build_targets(classes_by_frame: list[np.ndarray], source_xy: np.ndarray, kinds: np.ndarray) -> np.ndarray:
-    """Map original particle IDs to target pixels, preserving black/gray and eye groups."""
-    identities = (np.flatnonzero(kinds == 3), np.flatnonzero(kinds != 3))
-    positions_by_frame: list[np.ndarray] = []
-    previous = [None, None]
+def build_targets(classes_by_frame: list[np.ndarray], source_xy: np.ndarray,
+                  kinds: np.ndarray) -> tuple[np.ndarray, list[int], list[int]]:
+    """Track persistent IDs, allowing each frame to activate exactly its visible pixels.
+
+    All visible pixels receive a distinct particle; dormant IDs are reused before
+    allocating any new runtime particle. Matching is performed offline, not at 60 Hz.
+    """
+    source_eye = np.flatnonzero(kinds == 3)
+    source_body = np.flatnonzero(kinds != 3)
+    max_body = max(int(np.count_nonzero((frame > 0) & (frame != 3))) for frame in classes_by_frame)
+    max_eye = max(int(np.count_nonzero(frame == 3)) for frame in classes_by_frame)
+    if max_eye > len(source_eye):
+        raise ValueError('Eye particle pool must be expanded separately')
+    extra_count = max(0, max_body - len(source_body))
+    extra_sources = source_body[(np.arange(extra_count, dtype=np.int64) * len(source_body) // max(1, extra_count))]
+    total = len(source_xy) + extra_count
+    pool_xy = np.vstack((source_xy, source_xy[extra_sources])).astype(np.float32)
+    body_ids = np.concatenate((source_body, np.arange(len(source_xy), total, dtype=np.int32)))
+    group_ids = (source_eye, body_ids)
+    # Inactive entries retain their last known target position and shade=0.
+    positions = np.empty((len(classes_by_frame), total, 3), dtype=np.uint8)
+    previous_positions = pool_xy.copy()
+    previous_active = np.zeros(total, dtype=bool)
+    frame_counts = []
+
     for frame_index, classes in enumerate(classes_by_frame):
-        packed = np.empty((len(source_xy), 3), dtype=np.uint8)
-        for group, (ids, foreground) in enumerate(zip(identities, (classes == 3, np.isin(classes, [1, 2])))):
-            targets = np.argwhere(foreground)[:, ::-1].copy().astype(np.uint8)
-            indices = first_mapping(source_xy[ids], targets) if frame_index == 0 else match_next(previous[group], targets)
-            selected = targets[indices]
-            packed[ids, :2] = selected
-            packed[ids, 2] = classes[selected[:, 1], selected[:, 0]]
-            previous[group] = selected.astype(np.float32)
-        positions_by_frame.append(packed)
-    # Frame 22 is visually the first pose again. Closing at the exact same
-    # positions also prevents an identity shuffle during endless playback.
-    positions_by_frame[-1] = positions_by_frame[0].copy()
-    return np.stack(positions_by_frame)
+        frame = positions[frame_index]
+        frame[:, :2] = np.clip(previous_positions, 0, 255).astype(np.uint8)
+        frame[:, 2] = 0
+        for ids, mask in ((group_ids[0], classes == 3),
+                          (group_ids[1], np.isin(classes, (1, 2)))):
+            targets = np.argwhere(mask)[:, ::-1].copy().astype(np.uint8)
+            if len(targets) > len(ids):
+                raise ValueError(f'Insufficient pool capacity for frame {frame_index + 1}')
+            active_ids = ids[previous_active[ids]]
+            assigned_ids = np.empty(len(targets), dtype=np.int32)
+            assigned_targets = np.empty(len(targets), dtype=np.int32)
+
+            if len(targets) <= len(active_ids):
+                # Every target chooses a distinct previously active particle.
+                indices = match_next(targets.astype(np.float32), previous_positions[active_ids])
+                assigned_ids[:] = active_ids[indices]
+                assigned_targets[:] = np.arange(len(targets))
+            else:
+                n = len(active_ids)
+                used_targets = np.zeros(len(targets), dtype=bool)
+                if n:
+                    target_indices = match_next(previous_positions[active_ids], targets.astype(np.float32))
+                    assigned_ids[:n] = active_ids
+                    assigned_targets[:n] = target_indices
+                    used_targets[target_indices] = True
+                remaining_targets = np.flatnonzero(~used_targets)
+                dormant_ids = ids[~previous_active[ids]]
+                chosen = match_next(targets[remaining_targets].astype(np.float32),
+                                    previous_positions[dormant_ids])
+                assigned_ids[n:] = dormant_ids[chosen]
+                assigned_targets[n:] = remaining_targets
+
+            selected_xy = targets[assigned_targets]
+            frame[assigned_ids, :2] = selected_xy
+            frame[assigned_ids, 2] = classes[selected_xy[:, 1], selected_xy[:, 0]]
+            previous_positions[assigned_ids] = selected_xy
+        previous_active = frame[:, 2] != 0
+        frame_counts.append(int(np.count_nonzero(previous_active)))
+        if frame_counts[-1] != int(np.count_nonzero(classes)):
+            raise AssertionError(f'Frame {frame_index + 1}: target coverage mismatch')
+
+    return positions, frame_counts, extra_sources.astype(int).tolist()
 
 
 def compile_animation(source: Path, destination: Path, loop_frames: int = LOOP_FRAMES,
@@ -191,7 +240,8 @@ def compile_animation(source: Path, destination: Path, loop_frames: int = LOOP_F
     if not 20 <= frame_duration_ms <= 300:
         raise ValueError('Frame duration should be between 20 and 300 milliseconds')
     classes_by_frame, source_frames = read_source_frames(source, loop_frames)
-    # The final selected pose must be close enough to first for a seamless cut.
+    # The final source pose should remain close enough to the first one for a
+    # clean loop, but it is not forced to be identical.
     first = classes_by_frame[0] > 0
     last = classes_by_frame[-1] > 0
     overlap = np.count_nonzero(first & last) / np.count_nonzero(first | last)
@@ -199,7 +249,7 @@ def compile_animation(source: Path, destination: Path, loop_frames: int = LOOP_F
         raise ValueError('The selected loop does not end near the original idle pose')
 
     source_xy, kinds, checksum = source_groups()
-    targets = build_targets(classes_by_frame, source_xy, kinds)
+    targets, frame_counts, extra_sources = build_targets(classes_by_frame, source_xy, kinds)
     particle_major = targets.transpose((1, 0, 2)).copy().tobytes()
     compressed = gzip.compress(particle_major, compresslevel=9, mtime=0)
     encoded = base64.b64encode(compressed).decode('ascii')
@@ -209,10 +259,12 @@ def compile_animation(source: Path, destination: Path, loop_frames: int = LOOP_F
         "  name: 'idle',", '  width: 200,', '  height: 200,',
         f'  sourceFrames: {source_frames},',
         f'  frameCount: {len(classes_by_frame)},',
-        f'  particleCount: {len(source_xy)},',
+        f'  particleCount: {targets.shape[1]},',
+        f'  frameActiveCounts: {frame_counts},',
+        f'  extraSources: {extra_sources},',
         f'  sourceChecksum: {checksum},',
         f'  durationMs: {len(classes_by_frame) * frame_duration_ms},',
-        "  encoding: 'gzip-particle-major-rgb3',",
+        "  encoding: 'gzip-particle-major-rgb3-dynamic',",
         f"  payload: '{encoded}',", '});',
         "if (typeof module !== 'undefined' && module.exports) module.exports = { PERSONA_IDLE_TARGETS };", '',
     ])
@@ -224,7 +276,9 @@ def compile_animation(source: Path, destination: Path, loop_frames: int = LOOP_F
         'reference_frames': source_frames,
         'loop_frames': len(classes_by_frame),
         'duration_ms': len(classes_by_frame) * frame_duration_ms,
-        'particle_count': len(source_xy),
+        'pool_capacity': targets.shape[1],
+        'min_visible': min(frame_counts),
+        'max_visible': max(frame_counts),
         'mean_motion_px': round(float(np.mean(travel)), 2),
         'p95_motion_px': round(float(np.percentile(travel, 95)), 2),
         'loop_iou': round(float(overlap), 4),

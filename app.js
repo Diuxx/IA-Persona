@@ -9,6 +9,7 @@ async function initializePersona() {
   const roleMotionPlayer = new RoleMotionPlayer(world);
   controller = new BehaviorController(world, { animationPlayer: targetPlayer, roleMotionPlayer });
 const frame = context.createImageData(world.size, world.size);
+const pixelStabilizer = new PixelStabilizer(frame.data.length, world.size);
 const status = document.querySelector('#status');
 const count = document.querySelector('#particle-count');
 const fps = document.querySelector('#fps');
@@ -46,6 +47,10 @@ const tabButtons = [...document.querySelectorAll('[data-panel-target]')];
 const playIdleButton = document.querySelector('#play-idle');
 const stopIdleButton = document.querySelector('#stop-idle');
 const idleFrameControl = document.querySelector('#idle-frame');
+const idleSpeedControl = document.querySelector('#idle-speed');
+const idleSpeedValue = document.querySelector('#idle-speed-value');
+const particleDensityControl = document.querySelector('#particle-density');
+const antiFlickerControl = document.querySelector('#anti-flicker');
 const idleFrameValue = document.querySelector('#idle-frame-value');
 const idleLoopEndControl = document.querySelector('#idle-loop-end');
 const idleLoopEndValue = document.querySelector('#idle-loop-end-value');
@@ -60,7 +65,7 @@ idleLoopEndControl.max = String(idleFrameCount);
 canvas.width = world.size;
 canvas.height = world.size;
 context.imageSmoothingEnabled = false;
-count.textContent = world.particles.length.toLocaleString('fr-FR');
+count.textContent = world.visibleParticleCount.toLocaleString('fr-FR');
 linkCount.textContent = world.cohesionField.linkCount.toLocaleString('fr-FR');
 document.querySelector('#anatomy-count').textContent = world.anatomy.names.length;
 for (const role of ROLE_NAMES) {
@@ -136,17 +141,23 @@ function syncBehaviorControls() {
   voiceControl.disabled = snapshot.state !== 'speaking';
   refreshRoleLegend();
   syncAnimationControls();
+  count.textContent = world.visibleParticleCount.toLocaleString('fr-FR');
+  linkCount.textContent = world.cohesionField.linkCount.toLocaleString('fr-FR');
   updateRoleMotionStatus();
   updateStatus();
 }
 
 function syncAnimationControls() {
   const animation = targetPlayer.getSnapshot();
+  count.textContent = animation.visibleCount.toLocaleString('fr-FR');
+  particleDensityControl.value = animation.densityLimit === null ? 'auto' : String(animation.densityLimit);
   idleFrameControl.value = String(animation.frame + 1);
+  idleSpeedControl.value = String(animation.speed);
+  idleSpeedValue.textContent = `${animation.speed.toFixed(2).replace(/\.?0+$/, '')}×`;
   idleFrameValue.textContent = `${animation.frame + 1} / ${animation.frameCount}`;
   idleLoopEndControl.value = String(animation.loopEndFrame + 1);
   idleLoopEndValue.textContent = `${animation.loopEndFrame + 1} / ${animation.frameCount}`;
-  idleLoopDuration.textContent = `Boucle de ${(animation.playbackDurationMs / 1000).toFixed(2).replace('.', ',')} s · ${animation.frameDurationMs.toFixed(0)} ms/frame`;
+  idleLoopDuration.textContent = `Boucle de ${(animation.playbackDurationMs / 1000).toFixed(2).replace('.', ',')} s · ${(animation.frameDurationMs / animation.speed).toFixed(1).replace('.', ',')} ms/frame`;
   animationStatus.textContent = animation.inspecting
     ? `Frame ${animation.frame + 1} figée · prête pour inspection`
     : animation.playing
@@ -162,6 +173,7 @@ function inspectFrame(index) {
   accumulator = 0;
   lastTimestamp = null;
   syncBehaviorControls();
+  pixelStabilizer.reset();
   render();
 }
 
@@ -197,8 +209,11 @@ function updateRoleMotionStatus() {
     : 'Aucun mouvement de rôle en cours.';
 }
 
-function render() {
+function render(elapsedSeconds = FIXED_STEP) {
   world.writePixels(frame.data, frameOptions);
+  pixelStabilizer.apply(frame.data, elapsedSeconds,
+    antiFlickerControl.checked && targetPlayer.playing && !targetPlayer.inspecting && !world.paused &&
+    world.mode === 'idle' && !frameOptions.showAnatomy);
   context.putImageData(frame, 0, 0);
   frameDirty = false;
 }
@@ -231,7 +246,7 @@ function animate(timestamp) {
     if (iterations === 3) accumulator = 0;
   }
   const renderStart = performance.now();
-  if (iterations > 0 || frameDirty) render();
+  if (iterations > 0 || frameDirty) render(dt || FIXED_STEP);
   const renderEnd = performance.now();
   simulationTimeTotal += renderStart - simulationStart;
   renderingTimeTotal += renderEnd - renderStart;
@@ -271,6 +286,7 @@ document.querySelector('#reset-trigger').addEventListener('click', () => {
   controller.reset();
   controller.dispatch({ type: 'animation', name: 'idle' });
   frameDirty = true;
+  pixelStabilizer.reset();
   syncBehaviorControls();
 });
 
@@ -303,6 +319,23 @@ idleResumeButton.addEventListener('click', () => {
   accumulator = 0;
   lastTimestamp = null;
   syncBehaviorControls();
+});
+idleSpeedControl.addEventListener('input', () => {
+  controller.dispatch({ type: 'animation', action: 'speed', value: Number(idleSpeedControl.value) });
+  syncAnimationControls();
+});
+antiFlickerControl.addEventListener('change', () => {
+  pixelStabilizer.reset();
+  frameDirty = true;
+  if (targetPlayer.inspecting || world.paused) render();
+});
+
+particleDensityControl.addEventListener('change', () => {
+  controller.dispatch({ type: 'animation', action: 'particle-count', count: particleDensityControl.value === 'auto' ? 'auto' : Number(particleDensityControl.value) });
+  pixelStabilizer.reset();
+  frameDirty = true;
+  syncBehaviorControls();
+  if (targetPlayer.inspecting || world.paused) render();
 });
 idleLoopEndControl.addEventListener('input', () => {
   controller.dispatch({ type: 'animation', action: 'loop-end', frame: Number(idleLoopEndControl.value) - 1 });
@@ -411,7 +444,11 @@ if (motionQuery.matches) {
 window.persona = Object.freeze({
   dispatch(command) {
     const accepted = controller.dispatch(command);
-    if (accepted) frameDirty = true;
+    if (accepted) {
+      frameDirty = true;
+      pixelStabilizer.reset();
+      particleDensityControl.value = world.densityLimit === null ? 'auto' : String(world.densityLimit);
+    }
     syncBehaviorControls();
     return accepted;
   },

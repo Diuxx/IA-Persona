@@ -72,10 +72,21 @@ function validateAnimation(animation, world) {
       animation.width !== world.map.width || animation.height !== world.map.height ||
       !Number.isInteger(animation.frameCount) || animation.frameCount < 2 ||
       animation.frameCount > MAX_ANIMATION_FRAMES ||
-      animation.particleCount !== world.particles.length ||
+      (animation.encoding === 'gzip-particle-major-rgb3'
+        ? animation.particleCount !== world.particles.length
+        : animation.particleCount < world.sourceParticleCount || animation.particleCount > 40000) ||
       !Number.isFinite(animation.durationMs) || animation.durationMs <= 0 || animation.durationMs > 60000 ||
-      animation.encoding !== 'gzip-particle-major-rgb3') {
+      !['gzip-particle-major-rgb3', 'gzip-particle-major-rgb3-dynamic'].includes(animation.encoding)) {
     throw new TypeError('Animation cible incompatible avec la simulation.');
+  }
+  if (animation.encoding === 'gzip-particle-major-rgb3-dynamic') {
+    if (!Array.isArray(animation.extraSources) ||
+        animation.extraSources.length !== animation.particleCount - world.sourceParticleCount ||
+        !Array.isArray(animation.frameActiveCounts) ||
+        animation.frameActiveCounts.length !== animation.frameCount ||
+        animation.frameActiveCounts.some(n => !Number.isInteger(n) || n <= 0 || n > animation.particleCount)) {
+      throw new TypeError('Métadonnées de population dynamique invalides.');
+    }
   }
   const sourceMap = Uint8Array.from(atob(world.map.runs), value => value.charCodeAt(0));
   if (animation.sourceChecksum !== adler32(sourceMap)) {
@@ -91,21 +102,41 @@ async function decodeAnimation(animation, world) {
   const raw = await inflateGzip(animation.payload, expectedLength);
   if (raw.length !== expectedLength) throw new Error('Nombre de cibles incohérent.');
   const frames = Array.from({ length: animation.frameCount }, () => new Uint8Array(count * 3));
+  const dynamic = animation.encoding === 'gzip-particle-major-rgb3-dynamic';
+  const counts = new Uint32Array(frames.length);
   for (let particleIndex = 0; particleIndex < count; particleIndex += 1) {
     for (let frameIndex = 0; frameIndex < frames.length; frameIndex += 1) {
       const sourceOffset = (particleIndex * frames.length + frameIndex) * 3;
       const x = raw[sourceOffset];
       const y = raw[sourceOffset + 1];
       const shade = raw[sourceOffset + 2];
-      if (x >= animation.width || y >= animation.height || shade < 1 || shade > 3 ||
-          (world.particles[particleIndex].eye !== (shade === 3))) {
+      const expectedEye = particleIndex < world.sourceParticleCount && world.particles[particleIndex].eye;
+      if (x >= animation.width || y >= animation.height || shade > 3 ||
+          (!dynamic && shade === 0) || (shade !== 0 && Boolean(expectedEye) !== (shade === 3))) {
         throw new Error(`Position ou couleur invalide : frame ${frameIndex}, particule ${particleIndex}.`);
       }
       const targetOffset = particleIndex * 3;
       frames[frameIndex][targetOffset] = x;
       frames[frameIndex][targetOffset + 1] = y;
       frames[frameIndex][targetOffset + 2] = shade;
+      if (shade) counts[frameIndex] += 1;
     }
+  }
+  if (dynamic) {
+    for (let frameIndex = 0; frameIndex < frames.length; frameIndex += 1) {
+      if (counts[frameIndex] !== animation.frameActiveCounts[frameIndex]) {
+        throw new Error(`Population incohérente : frame ${frameIndex + 1}.`);
+      }
+      const occupied = new Uint8Array(animation.width * animation.height);
+      const frame = frames[frameIndex];
+      for (let i = 0; i < count; i += 1) {
+        if (!frame[i * 3 + 2]) continue;
+        const pixel = frame[i * 3 + 1] * animation.width + frame[i * 3];
+        if (occupied[pixel]) throw new Error(`Pixels dupliqués : frame ${frameIndex + 1}.`);
+        occupied[pixel] = 1;
+      }
+    }
+    world.enableDynamicPopulation(animation);
   }
   return frames;
 }
@@ -114,10 +145,28 @@ class TargetAnimationPlayer {
   constructor(world, animation, frames) {
     this.world = world;
     this.animation = animation;
+    this.fullFrames = frames;
     this.frames = frames;
+    // A fixed subset avoids quality-cap flicker: identities never swap during playback.
+    this.qualityOrder = null;
+    if (world.dynamicPopulation) {
+      const occurrence = new Uint8Array(world.particles.length);
+      for (const frame of frames) {
+        for (let index = 0; index < occurrence.length; index += 1) {
+          if (frame[index * 3 + 2] !== 0) occurrence[index] += 1;
+        }
+      }
+      const ranked = world.particleRank.map(item => item.index)
+        .sort((a, b) => occurrence[b] - occurrence[a] || a - b);
+      this.qualityOrder = {
+        eye: ranked.filter(index => world.particles[index].eye),
+        body: ranked.filter(index => !world.particles[index].eye),
+      };
+    }
     this.elapsed = 0;
     this.frame = 0;
     this.loopEndFrame = frames.length - 1;
+    this.speed = 1;
     this.loop = true;
     this.playing = false;
     this.inspecting = false;
@@ -135,8 +184,20 @@ class TargetAnimationPlayer {
     return this.animation.durationMs / this.frames.length;
   }
 
-  get playbackDurationMs() {
+  get sourcePlaybackDurationMs() {
     return (this.loopEndFrame + 1) * this.frameDurationMs;
+  }
+
+  get playbackDurationMs() {
+    return this.sourcePlaybackDurationMs / this.speed;
+  }
+
+  setSpeed(speed) {
+    if (!Number.isFinite(speed) || speed < 0.25 || speed > 3) {
+      throw new RangeError('Vitesse d’animation hors limites (0,25–3×).');
+    }
+    this.speed = speed;
+    return true;
   }
 
   play({ loop = true } = {}) {
@@ -177,13 +238,51 @@ class TargetAnimationPlayer {
     return true;
   }
 
-  /** Non-destructive loop trimming: the original 40 frames remain available. */
+  /** Change the density cap without changing the persistent pool or the 43 reference poses. */
+  setParticleCount(count) {
+    const changed = this.world.setParticleCount(count);
+    if (!changed) return false;
+    if (this.world.dynamicPopulation) {
+      const selected = new Uint8Array(this.world.particles.length);
+      if (count !== 'auto') {
+        // Keep an eye silhouette even on the smallest quality setting.
+        const eyeBudget = Math.max(1, Math.min(this.qualityOrder.eye.length,
+          Math.round(count * this.qualityOrder.eye.length / selected.length)));
+        for (let i = 0; i < eyeBudget; i += 1) selected[this.qualityOrder.eye[i]] = 1;
+        for (let i = 0; i < count - eyeBudget; i += 1) selected[this.qualityOrder.body[i]] = 1;
+      }
+      this.frames = this.fullFrames.map(sourceFrame => {
+        if (count === 'auto') return sourceFrame;
+        const filtered = sourceFrame.slice();
+        for (let index = 0; index < selected.length; index += 1) {
+          if (!selected[index]) filtered[index * 3 + 2] = 0;
+        }
+        return filtered;
+      });
+    } else {
+      this.frames = this.fullFrames.map(sourceFrame => {
+        const compact = new Uint8Array(count * 3);
+        for (let index = 0; index < count; index += 1) {
+          const sourceOffset = this.world.particles[index].sourceIndex * 3;
+          compact.set(sourceFrame.subarray(sourceOffset, sourceOffset + 3), index * 3);
+        }
+        return compact;
+      });
+    }
+    if (this.playing) {
+      this.applyPose();
+      if (this.inspecting) this.world.snapToTargetPose();
+    }
+    return true;
+  }
+
+  /** Non-destructive loop trimming: all 43 original frames remain available. */
   setLoopEndFrame(index) {
     this.validateFrame(index);
     if (index < 1) throw new RangeError('La boucle doit contenir au moins deux frames.');
     this.loopEndFrame = index;
     if (this.playing && !this.inspecting) {
-      if (this.elapsed * 1000 >= this.playbackDurationMs) this.elapsed = 0;
+      if (this.elapsed * 1000 >= this.sourcePlaybackDurationMs) this.elapsed = 0;
       this.applyPose();
     }
     return true;
@@ -208,8 +307,8 @@ class TargetAnimationPlayer {
       throw new RangeError('Durée d’animation invalide.');
     }
     if (!this.playing || this.inspecting || this.world.paused || deltaSeconds === 0) return;
-    const duration = this.playbackDurationMs / 1000;
-    this.elapsed += deltaSeconds;
+    const duration = this.sourcePlaybackDurationMs / 1000;
+    this.elapsed += deltaSeconds * this.speed;
     if (this.elapsed >= duration && !this.loop) {
       this.stop();
       return;
@@ -239,10 +338,14 @@ class TargetAnimationPlayer {
       inspecting: this.inspecting,
       frame: this.frame,
       frameCount: this.frames.length,
+      visibleCount: this.world.dynamicPopulation ? this.world.visibleParticleCount : this.world.particles.length,
+      requestedVisibleCount: this.animation.frameActiveCounts?.[this.frame] ?? this.world.particles.length,
+      densityLimit: this.world.dynamicPopulation ? this.world.densityLimit : this.world.particles.length,
       frameDurationMs: this.frameDurationMs,
+      speed: this.speed,
       loopEndFrame: this.loopEndFrame,
       playbackDurationMs: this.playbackDurationMs,
-      progress: this.elapsed / (this.playbackDurationMs / 1000),
+      progress: this.elapsed / (this.sourcePlaybackDurationMs / 1000),
       loop: this.loop,
     });
   }

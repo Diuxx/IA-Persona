@@ -18,8 +18,8 @@ test('le ZIP original des 43 poses est conservé avec les ressources', () => {
   const source = path.join(__dirname, '../assets/animations/idle-frames.zip');
   assert.ok(fs.statSync(source).size > 100_000);
   assert.equal(PERSONA_IDLE_TARGETS.sourceFrames, 43);
-  assert.equal(PERSONA_IDLE_TARGETS.frameCount, 22);
-  assert.equal(PERSONA_IDLE_TARGETS.durationMs, 1760);
+  assert.equal(PERSONA_IDLE_TARGETS.frameCount, 43);
+  assert.equal(PERSONA_IDLE_TARGETS.durationMs, 1720);
 });
 
 test('une pose idle figée reste immobile sans ondulation ni retour physique parasite', async () => {
