@@ -170,6 +170,7 @@ test('reset revient à idle sans modifier la carte anatomique ni les pixels', ()
   controller.reset();
   assert.deepEqual(controller.getSnapshot(), {
     state: 'idle', energy: 0.45, voiceLevel: 0, effect: 'idle', paused: false,
+    particleCount: 15886,
   });
   assert.equal(world.particles.length, 15886);
   assert.equal(world.anatomy.names.length, 11);
