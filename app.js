@@ -93,6 +93,7 @@ function refreshRoleLegend() {
 anatomyPreview.addEventListener('change', () => {
   frameOptions.showAnatomy = anatomyPreview.checked;
   anatomyLegend.hidden = !anatomyPreview.checked;
+  frameDirty = true;
 });
 
 const FIXED_STEP = 1 / 60;
@@ -102,6 +103,8 @@ let frameCounter = 0;
 let fpsStart = 0;
 let simulationTimeTotal = 0;
 let renderingTimeTotal = 0;
+// A paused or inspected pose needs no new pixel buffer until a control changes it.
+let frameDirty = true;
 
 const BEHAVIOR_LABELS = Object.freeze({
   idle: 'Idle · matière vivante',
@@ -193,18 +196,27 @@ function updateRoleMotionStatus() {
 function render() {
   world.writePixels(frame.data, frameOptions);
   context.putImageData(frame, 0, 0);
+  frameDirty = false;
 }
 
 function animate(timestamp) {
+  // Browser visibility must not consume CPU on a hidden tab or replay elapsed time.
+  if (document.hidden) {
+    lastTimestamp = null;
+    accumulator = 0;
+    requestAnimationFrame(animate);
+    return;
+  }
+
   const dt = lastTimestamp === null ? 0 : Math.min((timestamp - lastTimestamp) / 1000, 0.05);
   lastTimestamp = timestamp;
 
   const simulationStart = performance.now();
+  let iterations = 0;
   if (world.paused || targetPlayer.inspecting) {
     accumulator = 0;
   } else {
     accumulator += dt;
-    let iterations = 0;
     while (accumulator >= FIXED_STEP && iterations < 3) {
       controller.advance(FIXED_STEP);
       world.step(FIXED_STEP);
@@ -215,7 +227,7 @@ function animate(timestamp) {
     if (iterations === 3) accumulator = 0;
   }
   const renderStart = performance.now();
-  render();
+  if (iterations > 0 || frameDirty) render();
   const renderEnd = performance.now();
   simulationTimeTotal += renderStart - simulationStart;
   renderingTimeTotal += renderEnd - renderStart;
@@ -254,15 +266,18 @@ document.querySelector('#reveal-trigger').addEventListener('click', triggerRevea
 document.querySelector('#reset-trigger').addEventListener('click', () => {
   controller.reset();
   controller.dispatch({ type: 'animation', name: 'idle' });
+  frameDirty = true;
   syncBehaviorControls();
 });
 
 playIdleButton.addEventListener('click', () => {
   controller.dispatch({ type: 'animation', name: 'idle' });
+  frameDirty = true;
   syncBehaviorControls();
 });
 stopIdleButton.addEventListener('click', () => {
   controller.dispatch({ type: 'animation', action: 'stop' });
+  frameDirty = true;
   syncBehaviorControls();
 });
 
@@ -287,6 +302,7 @@ idleResumeButton.addEventListener('click', () => {
 });
 idleLoopEndControl.addEventListener('input', () => {
   controller.dispatch({ type: 'animation', action: 'loop-end', frame: Number(idleLoopEndControl.value) - 1 });
+  frameDirty = true;
   syncAnimationControls();
 });
 
@@ -368,12 +384,16 @@ organicControl.addEventListener('input', () => {
   organicValue.textContent = `${organicControl.value} %`;
 });
 
-accentControl.addEventListener('input', () => world.setAccent(accentControl.value));
+accentControl.addEventListener('input', () => {
+  world.setAccent(accentControl.value);
+  frameDirty = true;
+});
 
 document.addEventListener('visibilitychange', () => {
   // La prochaine frame repart sans rattraper la durée passée en arrière-plan.
   accumulator = 0;
   lastTimestamp = null;
+  if (!document.hidden) frameDirty = true;
 });
 
 if (motionQuery.matches) {
@@ -387,6 +407,7 @@ if (motionQuery.matches) {
 window.persona = Object.freeze({
   dispatch(command) {
     const accepted = controller.dispatch(command);
+    if (accepted) frameDirty = true;
     syncBehaviorControls();
     return accepted;
   },
