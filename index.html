@@ -8,6 +8,8 @@
   <link rel="stylesheet" href="./styles.css" />
   <script defer src="./assets/persona-map.js"></script>
   <script defer src="./cohesion-field.js"></script>
+  <script defer src="./assets/persona-anatomy.js"></script>
+  <script defer src="./anatomy.js"></script>
   <script defer src="./particle-world.js"></script>
   <script defer src="./app.js"></script>
 </head>
@@ -15,7 +17,7 @@
   <main class="page">
     <header class="site-header">
       <div class="brand"><span class="brand-mark" aria-hidden="true"></span> IA-PERSONA <span class="brand-separator">/</span> particle lab</div>
-      <span class="version">V2.1 · physique organique</span>
+      <span class="version">V2.2 · anatomie</span>
     </header>
     <div class="layout">
       <section class="preview-card" aria-label="Nuage de particules interactif">
@@ -31,7 +33,7 @@
       <aside class="controls-card">
         <p class="eyebrow">PHYSIQUE / MATIÈRE VIVANTE</p>
         <h1>Un nuage<br><span>de pixels.</span></h1>
-        <p class="intro">Les pixels voisins restent liés comme une matière souple. Le nuage respire, explose puis retrouve progressivement sa cohésion et ses couleurs.</p>
+        <p class="intro">Les pixels sont maintenant organisés en régions anatomiques. Le corps, l’œil, les gouttes et les pattes possèdent leurs propres mouvements et forces.</p>
         <div class="metrics">
           <div><strong id="particle-count">—</strong><span>particules</span></div>
           <div><strong>200 × 200</strong><span>grille source</span></div>
@@ -65,6 +67,13 @@
             <label for="organic-motion"><span>Respiration organique</span><output id="organic-motion-value" for="organic-motion">100 %</output></label>
             <input id="organic-motion" type="range" min="0" max="200" step="5" value="100" />
           </div>
+          <div class="anatomy-section">
+            <label class="anatomy-toggle" for="anatomy-preview">
+              <span>Visualiser les zones (<strong id="anatomy-count">—</strong>)</span>
+              <input id="anatomy-preview" type="checkbox" />
+            </label>
+            <div id="anatomy-legend" class="anatomy-legend" hidden aria-label="Légende anatomique"></div>
+          </div>
           <div class="control-group color-group">
             <label for="accent"><span>Couleur pendant la transformation</span></label>
             <input id="accent" type="color" value="#a58afc" />
@@ -73,7 +82,7 @@
         <p class="hint">Le mouvement est calculé en continu, sans GIF ni spritesheet. Cliquez sur le nuage, ou testez les boutons.</p>
         <div class="divider"></div>
         <p class="eyebrow">MOTEUR</p>
-        <div class="layer-tags"><span>Cohésion locale</span><span>Respiration</span><span>Ressort</span><span>Morphing couleur</span><span>Clignement</span></div>
+        <div class="layer-tags"><span>11 zones anatomiques</span><span>Cohésion locale</span><span>Respiration</span><span>Ressort</span><span>Morphing couleur</span><span>Clignement</span></div>
       </aside>
     </div>
     <footer>POC expérimental · Source PNG originale préservée · Canvas 2D</footer>
