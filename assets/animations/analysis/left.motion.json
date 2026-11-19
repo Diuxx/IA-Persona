@@ -1,0 +1,2940 @@
+{
+  "schemaVersion": 1,
+  "analysisKind": "source-png-silhouettes-without-particle-identities",
+  "animation": {
+    "name": "left",
+    "frameCount": 34,
+    "frameDurationMs": null,
+    "durationMs": null,
+    "canvasSize": [
+      374,
+      200
+    ],
+    "loop": null,
+    "timingSource": "not-provided-in-png",
+    "sourceArchive": "assets/animations/left-frames.zip",
+    "sourceSha256": "98618dd7e12816c764c335563437f08eb0ec5402fe5ec748e1d5b83e6ae1127d"
+  },
+  "sourceIntent": {
+    "userDescription": "aller à gauche et s’arrêter",
+    "proposedPlaybackLoop": false,
+    "validatedEndPose": false
+  },
+  "summary": {
+    "initialPrimaryBodyCenter": {
+      "x": 161.722,
+      "y": 103.045
+    },
+    "leftmostPrimaryBodyCenter": {
+      "x": 97.469,
+      "y": 107.774
+    },
+    "leftmostFrame": 31,
+    "rightmostFrame": 15,
+    "finalPrimaryBodyCenter": {
+      "x": 144.573,
+      "y": 104.975
+    },
+    "maximumLeftwardDisplacementPx": 64.253,
+    "maximumLeftwardDisplacementBodyHeights": 0.407,
+    "netHorizontalDisplacementPx": -17.149,
+    "horizontalReboundFromLeftmostPx": 47.104,
+    "bodyHeightVariationPx": 40.0,
+    "minVisiblePixels": 16079,
+    "maxVisiblePixels": 23311,
+    "nearIdenticalHolds": [
+      {
+        "firstFrame": 1,
+        "lastFrame": 2
+      },
+      {
+        "firstFrame": 3,
+        "lastFrame": 6
+      },
+      {
+        "firstFrame": 7,
+        "lastFrame": 8
+      },
+      {
+        "firstFrame": 9,
+        "lastFrame": 11
+      },
+      {
+        "firstFrame": 13,
+        "lastFrame": 14
+      },
+      {
+        "firstFrame": 15,
+        "lastFrame": 17
+      },
+      {
+        "firstFrame": 19,
+        "lastFrame": 21
+      },
+      {
+        "firstFrame": 22,
+        "lastFrame": 23
+      },
+      {
+        "firstFrame": 26,
+        "lastFrame": 28
+      },
+      {
+        "firstFrame": 32,
+        "lastFrame": 33
+      }
+    ],
+    "terminal": {
+      "finalTransitionBodyDistancePx": 34.144,
+      "finalTransitionSilhouetteIoU": 0.686,
+      "finalTransitionNearIdentical": false,
+      "stopEvidence": "terminal-stability-not-demonstrated"
+    }
+  },
+  "frames": [
+    {
+      "index": 1,
+      "sourceFile": "frame-001.png",
+      "silhouette": {
+        "visiblePixels": 19703,
+        "centroid": {
+          "x": 145.567,
+          "y": 105.559
+        },
+        "bounds": {
+          "left": 5,
+          "top": 32,
+          "right": 234,
+          "bottom": 191,
+          "width": 230,
+          "height": 160
+        }
+      },
+      "regions": {
+        "primaryBody": {
+          "visiblePixels": 16789,
+          "centroid": {
+            "x": 161.722,
+            "y": 103.045
+          },
+          "bounds": {
+            "left": 81,
+            "top": 32,
+            "right": 234,
+            "bottom": 189,
+            "width": 154,
+            "height": 158
+          }
+        },
+        "brightEyeCandidate": {
+          "visiblePixels": 365,
+          "centroid": {
+            "x": 170.482,
+            "y": 135.559
+          },
+          "bounds": {
+            "left": 146,
+            "top": 131,
+            "right": 195,
+            "bottom": 141,
+            "width": 50,
+            "height": 11
+          },
+          "relativeToPrimaryBody": {
+            "x": 8.76,
+            "y": 32.514
+          }
+        },
+        "detachedMatter": {
+          "visiblePixels": 2914,
+          "centroid": {
+            "x": 52.493,
+            "y": 120.044
+          },
+          "bounds": {
+            "left": 5,
+            "top": 36,
+            "right": 223,
+            "bottom": 191,
+            "width": 219,
+            "height": 156
+          }
+        }
+      },
+      "connectedComponents": 22
+    },
+    {
+      "index": 2,
+      "sourceFile": "frame-002.png",
+      "silhouette": {
+        "visiblePixels": 19685,
+        "centroid": {
+          "x": 145.632,
+          "y": 105.516
+        },
+        "bounds": {
+          "left": 5,
+          "top": 32,
+          "right": 234,
+          "bottom": 191,
+          "width": 230,
+          "height": 160
+        }
+      },
+      "regions": {
+        "primaryBody": {
+          "visiblePixels": 16782,
+          "centroid": {
+            "x": 161.742,
+            "y": 103.015
+          },
+          "bounds": {
+            "left": 81,
+            "top": 32,
+            "right": 234,
+            "bottom": 189,
+            "width": 154,
+            "height": 158
+          }
+        },
+        "brightEyeCandidate": {
+          "visiblePixels": 365,
+          "centroid": {
+            "x": 170.482,
+            "y": 135.559
+          },
+          "bounds": {
+            "left": 146,
+            "top": 131,
+            "right": 195,
+            "bottom": 141,
+            "width": 50,
+            "height": 11
+          },
+          "relativeToPrimaryBody": {
+            "x": 8.74,
+            "y": 32.544
+          }
+        },
+        "detachedMatter": {
+          "visiblePixels": 2903,
+          "centroid": {
+            "x": 52.504,
+            "y": 119.974
+          },
+          "bounds": {
+            "left": 5,
+            "top": 36,
+            "right": 223,
+            "bottom": 191,
+            "width": 219,
+            "height": 156
+          }
+        }
+      },
+      "connectedComponents": 20
+    },
+    {
+      "index": 3,
+      "sourceFile": "frame-003.png",
+      "silhouette": {
+        "visiblePixels": 19551,
+        "centroid": {
+          "x": 158.361,
+          "y": 104.665
+        },
+        "bounds": {
+          "left": 4,
+          "top": 34,
+          "right": 243,
+          "bottom": 193,
+          "width": 240,
+          "height": 160
+        }
+      },
+      "regions": {
+        "primaryBody": {
+          "visiblePixels": 18011,
+          "centroid": {
+            "x": 167.781,
+            "y": 103.188
+          },
+          "bounds": {
+            "left": 85,
+            "top": 34,
+            "right": 243,
+            "bottom": 193,
+            "width": 159,
+            "height": 160
+          }
+        },
+        "brightEyeCandidate": {
+          "visiblePixels": 363,
+          "centroid": {
+            "x": 169.851,
+            "y": 134.92
+          },
+          "bounds": {
+            "left": 143,
+            "top": 130,
+            "right": 197,
+            "bottom": 140,
+            "width": 55,
+            "height": 11
+          },
+          "relativeToPrimaryBody": {
+            "x": 2.07,
+            "y": 31.732
+          }
+        },
+        "detachedMatter": {
+          "visiblePixels": 1540,
+          "centroid": {
+            "x": 48.185,
+            "y": 121.932
+          },
+          "bounds": {
+            "left": 4,
+            "top": 44,
+            "right": 197,
+            "bottom": 193,
+            "width": 194,
+            "height": 150
+          }
+        }
+      },
+      "connectedComponents": 18
+    },
+    {
+      "index": 4,
+      "sourceFile": "frame-004.png",
+      "silhouette": {
+        "visiblePixels": 19554,
+        "centroid": {
+          "x": 158.338,
+          "y": 104.659
+        },
+        "bounds": {
+          "left": 4,
+          "top": 34,
+          "right": 243,
+          "bottom": 193,
+          "width": 240,
+          "height": 160
+        }
+      },
+      "regions": {
+        "primaryBody": {
+          "visiblePixels": 18012,
+          "centroid": {
+            "x": 167.78,
+            "y": 103.186
+          },
+          "bounds": {
+            "left": 85,
+            "top": 34,
+            "right": 243,
+            "bottom": 193,
+            "width": 159,
+            "height": 160
+          }
+        },
+        "brightEyeCandidate": {
+          "visiblePixels": 363,
+          "centroid": {
+            "x": 169.851,
+            "y": 134.92
+          },
+          "bounds": {
+            "left": 143,
+            "top": 130,
+            "right": 197,
+            "bottom": 140,
+            "width": 55,
+            "height": 11
+          },
+          "relativeToPrimaryBody": {
+            "x": 2.071,
+            "y": 31.734
+          }
+        },
+        "detachedMatter": {
+          "visiblePixels": 1542,
+          "centroid": {
+            "x": 48.041,
+            "y": 121.867
+          },
+          "bounds": {
+            "left": 4,
+            "top": 44,
+            "right": 197,
+            "bottom": 193,
+            "width": 194,
+            "height": 150
+          }
+        }
+      },
+      "connectedComponents": 18
+    },
+    {
+      "index": 5,
+      "sourceFile": "frame-005.png",
+      "silhouette": {
+        "visiblePixels": 19551,
+        "centroid": {
+          "x": 158.361,
+          "y": 104.665
+        },
+        "bounds": {
+          "left": 4,
+          "top": 34,
+          "right": 243,
+          "bottom": 193,
+          "width": 240,
+          "height": 160
+        }
+      },
+      "regions": {
+        "primaryBody": {
+          "visiblePixels": 18011,
+          "centroid": {
+            "x": 167.781,
+            "y": 103.188
+          },
+          "bounds": {
+            "left": 85,
+            "top": 34,
+            "right": 243,
+            "bottom": 193,
+            "width": 159,
+            "height": 160
+          }
+        },
+        "brightEyeCandidate": {
+          "visiblePixels": 363,
+          "centroid": {
+            "x": 169.851,
+            "y": 134.92
+          },
+          "bounds": {
+            "left": 143,
+            "top": 130,
+            "right": 197,
+            "bottom": 140,
+            "width": 55,
+            "height": 11
+          },
+          "relativeToPrimaryBody": {
+            "x": 2.07,
+            "y": 31.732
+          }
+        },
+        "detachedMatter": {
+          "visiblePixels": 1540,
+          "centroid": {
+            "x": 48.185,
+            "y": 121.932
+          },
+          "bounds": {
+            "left": 4,
+            "top": 44,
+            "right": 197,
+            "bottom": 193,
+            "width": 194,
+            "height": 150
+          }
+        }
+      },
+      "connectedComponents": 18
+    },
+    {
+      "index": 6,
+      "sourceFile": "frame-006.png",
+      "silhouette": {
+        "visiblePixels": 19554,
+        "centroid": {
+          "x": 158.338,
+          "y": 104.659
+        },
+        "bounds": {
+          "left": 4,
+          "top": 34,
+          "right": 243,
+          "bottom": 193,
+          "width": 240,
+          "height": 160
+        }
+      },
+      "regions": {
+        "primaryBody": {
+          "visiblePixels": 18012,
+          "centroid": {
+            "x": 167.78,
+            "y": 103.186
+          },
+          "bounds": {
+            "left": 85,
+            "top": 34,
+            "right": 243,
+            "bottom": 193,
+            "width": 159,
+            "height": 160
+          }
+        },
+        "brightEyeCandidate": {
+          "visiblePixels": 363,
+          "centroid": {
+            "x": 169.851,
+            "y": 134.92
+          },
+          "bounds": {
+            "left": 143,
+            "top": 130,
+            "right": 197,
+            "bottom": 140,
+            "width": 55,
+            "height": 11
+          },
+          "relativeToPrimaryBody": {
+            "x": 2.071,
+            "y": 31.734
+          }
+        },
+        "detachedMatter": {
+          "visiblePixels": 1542,
+          "centroid": {
+            "x": 48.041,
+            "y": 121.867
+          },
+          "bounds": {
+            "left": 4,
+            "top": 44,
+            "right": 197,
+            "bottom": 193,
+            "width": 194,
+            "height": 150
+          }
+        }
+      },
+      "connectedComponents": 18
+    },
+    {
+      "index": 7,
+      "sourceFile": "frame-007.png",
+      "silhouette": {
+        "visiblePixels": 17907,
+        "centroid": {
+          "x": 163.137,
+          "y": 103.571
+        },
+        "bounds": {
+          "left": 0,
+          "top": 32,
+          "right": 241,
+          "bottom": 193,
+          "width": 242,
+          "height": 162
+        }
+      },
+      "regions": {
+        "primaryBody": {
+          "visiblePixels": 17345,
+          "centroid": {
+            "x": 166.951,
+            "y": 103.005
+          },
+          "bounds": {
+            "left": 87,
+            "top": 32,
+            "right": 241,
+            "bottom": 190,
+            "width": 155,
+            "height": 159
+          }
+        },
+        "brightEyeCandidate": {
+          "visiblePixels": 367,
+          "centroid": {
+            "x": 170.035,
+            "y": 137.48
+          },
+          "bounds": {
+            "left": 144,
+            "top": 132,
+            "right": 196,
+            "bottom": 143,
+            "width": 53,
+            "height": 12
+          },
+          "relativeToPrimaryBody": {
+            "x": 3.084,
+            "y": 34.475
+          }
+        },
+        "detachedMatter": {
+          "visiblePixels": 562,
+          "centroid": {
+            "x": 45.427,
+            "y": 121.039
+          },
+          "bounds": {
+            "left": 0,
+            "top": 38,
+            "right": 235,
+            "bottom": 193,
+            "width": 236,
+            "height": 156
+          }
+        }
+      },
+      "connectedComponents": 24
+    },
+    {
+      "index": 8,
+      "sourceFile": "frame-008.png",
+      "silhouette": {
+        "visiblePixels": 17903,
+        "centroid": {
+          "x": 163.13,
+          "y": 103.561
+        },
+        "bounds": {
+          "left": 0,
+          "top": 32,
+          "right": 241,
+          "bottom": 193,
+          "width": 242,
+          "height": 162
+        }
+      },
+      "regions": {
+        "primaryBody": {
+          "visiblePixels": 17342,
+          "centroid": {
+            "x": 166.945,
+            "y": 102.998
+          },
+          "bounds": {
+            "left": 87,
+            "top": 32,
+            "right": 241,
+            "bottom": 190,
+            "width": 155,
+            "height": 159
+          }
+        },
+        "brightEyeCandidate": {
+          "visiblePixels": 366,
+          "centroid": {
+            "x": 170.025,
+            "y": 137.484
+          },
+          "bounds": {
+            "left": 144,
+            "top": 132,
+            "right": 196,
+            "bottom": 143,
+            "width": 53,
+            "height": 12
+          },
+          "relativeToPrimaryBody": {
+            "x": 3.08,
+            "y": 34.486
+          }
+        },
+        "detachedMatter": {
+          "visiblePixels": 561,
+          "centroid": {
+            "x": 45.191,
+            "y": 120.945
+          },
+          "bounds": {
+            "left": 0,
+            "top": 38,
+            "right": 235,
+            "bottom": 193,
+            "width": 236,
+            "height": 156
+          }
+        }
+      },
+      "connectedComponents": 23
+    },
+    {
+      "index": 9,
+      "sourceFile": "frame-009.png",
+      "silhouette": {
+        "visiblePixels": 16773,
+        "centroid": {
+          "x": 165.666,
+          "y": 104.29
+        },
+        "bounds": {
+          "left": 0,
+          "top": 30,
+          "right": 241,
+          "bottom": 195,
+          "width": 242,
+          "height": 166
+        }
+      },
+      "regions": {
+        "primaryBody": {
+          "visiblePixels": 15738,
+          "centroid": {
+            "x": 170.056,
+            "y": 107.539
+          },
+          "bounds": {
+            "left": 94,
+            "top": 32,
+            "right": 241,
+            "bottom": 195,
+            "width": 148,
+            "height": 164
+          }
+        },
+        "brightEyeCandidate": {
+          "visiblePixels": 360,
+          "centroid": {
+            "x": 170.211,
+            "y": 139.447
+          },
+          "bounds": {
+            "left": 145,
+            "top": 134,
+            "right": 195,
+            "bottom": 145,
+            "width": 51,
+            "height": 12
+          },
+          "relativeToPrimaryBody": {
+            "x": 0.155,
+            "y": 31.908
+          }
+        },
+        "detachedMatter": {
+          "visiblePixels": 1035,
+          "centroid": {
+            "x": 98.909,
+            "y": 54.894
+          },
+          "bounds": {
+            "left": 0,
+            "top": 30,
+            "right": 235,
+            "bottom": 191,
+            "width": 236,
+            "height": 162
+          }
+        }
+      },
+      "connectedComponents": 21
+    },
+    {
+      "index": 10,
+      "sourceFile": "frame-010.png",
+      "silhouette": {
+        "visiblePixels": 16771,
+        "centroid": {
+          "x": 165.68,
+          "y": 104.278
+        },
+        "bounds": {
+          "left": 0,
+          "top": 31,
+          "right": 241,
+          "bottom": 195,
+          "width": 242,
+          "height": 165
+        }
+      },
+      "regions": {
+        "primaryBody": {
+          "visiblePixels": 15737,
+          "centroid": {
+            "x": 170.068,
+            "y": 107.521
+          },
+          "bounds": {
+            "left": 94,
+            "top": 32,
+            "right": 241,
+            "bottom": 195,
+            "width": 148,
+            "height": 164
+          }
+        },
+        "brightEyeCandidate": {
+          "visiblePixels": 360,
+          "centroid": {
+            "x": 170.211,
+            "y": 139.447
+          },
+          "bounds": {
+            "left": 145,
+            "top": 134,
+            "right": 195,
+            "bottom": 145,
+            "width": 51,
+            "height": 12
+          },
+          "relativeToPrimaryBody": {
+            "x": 0.143,
+            "y": 31.926
+          }
+        },
+        "detachedMatter": {
+          "visiblePixels": 1034,
+          "centroid": {
+            "x": 98.897,
+            "y": 54.918
+          },
+          "bounds": {
+            "left": 0,
+            "top": 31,
+            "right": 235,
+            "bottom": 191,
+            "width": 236,
+            "height": 161
+          }
+        }
+      },
+      "connectedComponents": 21
+    },
+    {
+      "index": 11,
+      "sourceFile": "frame-011.png",
+      "silhouette": {
+        "visiblePixels": 16745,
+        "centroid": {
+          "x": 165.675,
+          "y": 104.228
+        },
+        "bounds": {
+          "left": 0,
+          "top": 31,
+          "right": 241,
+          "bottom": 195,
+          "width": 242,
+          "height": 165
+        }
+      },
+      "regions": {
+        "primaryBody": {
+          "visiblePixels": 15717,
+          "centroid": {
+            "x": 170.051,
+            "y": 107.475
+          },
+          "bounds": {
+            "left": 94,
+            "top": 32,
+            "right": 241,
+            "bottom": 195,
+            "width": 148,
+            "height": 164
+          }
+        },
+        "brightEyeCandidate": {
+          "visiblePixels": 361,
+          "centroid": {
+            "x": 170.249,
+            "y": 139.435
+          },
+          "bounds": {
+            "left": 145,
+            "top": 134,
+            "right": 195,
+            "bottom": 145,
+            "width": 51,
+            "height": 12
+          },
+          "relativeToPrimaryBody": {
+            "x": 0.198,
+            "y": 31.96
+          }
+        },
+        "detachedMatter": {
+          "visiblePixels": 1028,
+          "centroid": {
+            "x": 98.781,
+            "y": 54.578
+          },
+          "bounds": {
+            "left": 0,
+            "top": 31,
+            "right": 235,
+            "bottom": 176,
+            "width": 236,
+            "height": 146
+          }
+        }
+      },
+      "connectedComponents": 17
+    },
+    {
+      "index": 12,
+      "sourceFile": "frame-012.png",
+      "silhouette": {
+        "visiblePixels": 16116,
+        "centroid": {
+          "x": 167.249,
+          "y": 104.231
+        },
+        "bounds": {
+          "left": 88,
+          "top": 30,
+          "right": 240,
+          "bottom": 196,
+          "width": 153,
+          "height": 167
+        }
+      },
+      "regions": {
+        "primaryBody": {
+          "visiblePixels": 14874,
+          "centroid": {
+            "x": 167.933,
+            "y": 109.41
+          },
+          "bounds": {
+            "left": 96,
+            "top": 37,
+            "right": 240,
+            "bottom": 196,
+            "width": 145,
+            "height": 160
+          }
+        },
+        "brightEyeCandidate": {
+          "visiblePixels": 360,
+          "centroid": {
+            "x": 170.281,
+            "y": 136.8
+          },
+          "bounds": {
+            "left": 145,
+            "top": 131,
+            "right": 195,
+            "bottom": 143,
+            "width": 51,
+            "height": 13
+          },
+          "relativeToPrimaryBody": {
+            "x": 2.348,
+            "y": 27.39
+          }
+        },
+        "detachedMatter": {
+          "visiblePixels": 1242,
+          "centroid": {
+            "x": 159.055,
+            "y": 42.207
+          },
+          "bounds": {
+            "left": 88,
+            "top": 30,
+            "right": 233,
+            "bottom": 185,
+            "width": 146,
+            "height": 156
+          }
+        }
+      },
+      "connectedComponents": 10
+    },
+    {
+      "index": 13,
+      "sourceFile": "frame-013.png",
+      "silhouette": {
+        "visiblePixels": 16129,
+        "centroid": {
+          "x": 167.392,
+          "y": 104.122
+        },
+        "bounds": {
+          "left": 88,
+          "top": 2,
+          "right": 240,
+          "bottom": 196,
+          "width": 153,
+          "height": 195
+        }
+      },
+      "regions": {
+        "primaryBody": {
+          "visiblePixels": 14869,
+          "centroid": {
+            "x": 168.156,
+            "y": 109.441
+          },
+          "bounds": {
+            "left": 96,
+            "top": 37,
+            "right": 240,
+            "bottom": 196,
+            "width": 145,
+            "height": 160
+          }
+        },
+        "brightEyeCandidate": {
+          "visiblePixels": 360,
+          "centroid": {
+            "x": 170.586,
+            "y": 136.856
+          },
+          "bounds": {
+            "left": 146,
+            "top": 131,
+            "right": 195,
+            "bottom": 143,
+            "width": 50,
+            "height": 13
+          },
+          "relativeToPrimaryBody": {
+            "x": 2.43,
+            "y": 27.415
+          }
+        },
+        "detachedMatter": {
+          "visiblePixels": 1260,
+          "centroid": {
+            "x": 158.377,
+            "y": 41.363
+          },
+          "bounds": {
+            "left": 88,
+            "top": 2,
+            "right": 233,
+            "bottom": 171,
+            "width": 146,
+            "height": 170
+          }
+        }
+      },
+      "connectedComponents": 10
+    },
+    {
+      "index": 14,
+      "sourceFile": "frame-014.png",
+      "silhouette": {
+        "visiblePixels": 16128,
+        "centroid": {
+          "x": 167.396,
+          "y": 104.124
+        },
+        "bounds": {
+          "left": 88,
+          "top": 2,
+          "right": 240,
+          "bottom": 196,
+          "width": 153,
+          "height": 195
+        }
+      },
+      "regions": {
+        "primaryBody": {
+          "visiblePixels": 14868,
+          "centroid": {
+            "x": 168.16,
+            "y": 109.443
+          },
+          "bounds": {
+            "left": 96,
+            "top": 37,
+            "right": 240,
+            "bottom": 196,
+            "width": 145,
+            "height": 160
+          }
+        },
+        "brightEyeCandidate": {
+          "visiblePixels": 360,
+          "centroid": {
+            "x": 170.586,
+            "y": 136.856
+          },
+          "bounds": {
+            "left": 146,
+            "top": 131,
+            "right": 195,
+            "bottom": 143,
+            "width": 50,
+            "height": 13
+          },
+          "relativeToPrimaryBody": {
+            "x": 2.426,
+            "y": 27.413
+          }
+        },
+        "detachedMatter": {
+          "visiblePixels": 1260,
+          "centroid": {
+            "x": 158.377,
+            "y": 41.363
+          },
+          "bounds": {
+            "left": 88,
+            "top": 2,
+            "right": 233,
+            "bottom": 171,
+            "width": 146,
+            "height": 170
+          }
+        }
+      },
+      "connectedComponents": 10
+    },
+    {
+      "index": 15,
+      "sourceFile": "frame-015.png",
+      "silhouette": {
+        "visiblePixels": 16085,
+        "centroid": {
+          "x": 171.717,
+          "y": 109.94
+        },
+        "bounds": {
+          "left": 87,
+          "top": 25,
+          "right": 245,
+          "bottom": 195,
+          "width": 159,
+          "height": 171
+        }
+      },
+      "regions": {
+        "primaryBody": {
+          "visiblePixels": 15196,
+          "centroid": {
+            "x": 171.627,
+            "y": 114.129
+          },
+          "bounds": {
+            "left": 94,
+            "top": 45,
+            "right": 245,
+            "bottom": 195,
+            "width": 152,
+            "height": 151
+          }
+        },
+        "brightEyeCandidate": {
+          "visiblePixels": 124,
+          "centroid": {
+            "x": 166.718,
+            "y": 141.065
+          },
+          "bounds": {
+            "left": 147,
+            "top": 137,
+            "right": 190,
+            "bottom": 144,
+            "width": 44,
+            "height": 8
+          },
+          "relativeToPrimaryBody": {
+            "x": -4.909,
+            "y": 26.936
+          }
+        },
+        "detachedMatter": {
+          "visiblePixels": 889,
+          "centroid": {
+            "x": 173.247,
+            "y": 38.326
+          },
+          "bounds": {
+            "left": 87,
+            "top": 25,
+            "right": 235,
+            "bottom": 172,
+            "width": 149,
+            "height": 148
+          }
+        }
+      },
+      "connectedComponents": 8
+    },
+    {
+      "index": 16,
+      "sourceFile": "frame-016.png",
+      "silhouette": {
+        "visiblePixels": 16083,
+        "centroid": {
+          "x": 171.717,
+          "y": 109.926
+        },
+        "bounds": {
+          "left": 87,
+          "top": 25,
+          "right": 245,
+          "bottom": 195,
+          "width": 159,
+          "height": 171
+        }
+      },
+      "regions": {
+        "primaryBody": {
+          "visiblePixels": 15194,
+          "centroid": {
+            "x": 171.627,
+            "y": 114.115
+          },
+          "bounds": {
+            "left": 94,
+            "top": 45,
+            "right": 245,
+            "bottom": 195,
+            "width": 152,
+            "height": 151
+          }
+        },
+        "brightEyeCandidate": {
+          "visiblePixels": 124,
+          "centroid": {
+            "x": 166.718,
+            "y": 141.065
+          },
+          "bounds": {
+            "left": 147,
+            "top": 137,
+            "right": 190,
+            "bottom": 144,
+            "width": 44,
+            "height": 8
+          },
+          "relativeToPrimaryBody": {
+            "x": -4.909,
+            "y": 26.95
+          }
+        },
+        "detachedMatter": {
+          "visiblePixels": 889,
+          "centroid": {
+            "x": 173.247,
+            "y": 38.326
+          },
+          "bounds": {
+            "left": 87,
+            "top": 25,
+            "right": 235,
+            "bottom": 172,
+            "width": 149,
+            "height": 148
+          }
+        }
+      },
+      "connectedComponents": 8
+    },
+    {
+      "index": 17,
+      "sourceFile": "frame-017.png",
+      "silhouette": {
+        "visiblePixels": 16079,
+        "centroid": {
+          "x": 171.706,
+          "y": 109.912
+        },
+        "bounds": {
+          "left": 87,
+          "top": 25,
+          "right": 245,
+          "bottom": 195,
+          "width": 159,
+          "height": 171
+        }
+      },
+      "regions": {
+        "primaryBody": {
+          "visiblePixels": 15190,
+          "centroid": {
+            "x": 171.616,
+            "y": 114.102
+          },
+          "bounds": {
+            "left": 94,
+            "top": 45,
+            "right": 245,
+            "bottom": 195,
+            "width": 152,
+            "height": 151
+          }
+        },
+        "brightEyeCandidate": {
+          "visiblePixels": 126,
+          "centroid": {
+            "x": 166.73,
+            "y": 141.056
+          },
+          "bounds": {
+            "left": 147,
+            "top": 137,
+            "right": 190,
+            "bottom": 144,
+            "width": 44,
+            "height": 8
+          },
+          "relativeToPrimaryBody": {
+            "x": -4.886,
+            "y": 26.954
+          }
+        },
+        "detachedMatter": {
+          "visiblePixels": 889,
+          "centroid": {
+            "x": 173.247,
+            "y": 38.326
+          },
+          "bounds": {
+            "left": 87,
+            "top": 25,
+            "right": 235,
+            "bottom": 172,
+            "width": 149,
+            "height": 148
+          }
+        }
+      },
+      "connectedComponents": 8
+    },
+    {
+      "index": 18,
+      "sourceFile": "frame-018.png",
+      "silhouette": {
+        "visiblePixels": 16921,
+        "centroid": {
+          "x": 168.467,
+          "y": 112.934
+        },
+        "bounds": {
+          "left": 84,
+          "top": 24,
+          "right": 256,
+          "bottom": 191,
+          "width": 173,
+          "height": 168
+        }
+      },
+      "regions": {
+        "primaryBody": {
+          "visiblePixels": 16403,
+          "centroid": {
+            "x": 168.301,
+            "y": 115.378
+          },
+          "bounds": {
+            "left": 84,
+            "top": 47,
+            "right": 256,
+            "bottom": 191,
+            "width": 173,
+            "height": 145
+          }
+        },
+        "brightEyeCandidate": {
+          "visiblePixels": 0,
+          "centroid": null,
+          "bounds": null,
+          "relativeToPrimaryBody": null
+        },
+        "detachedMatter": {
+          "visiblePixels": 518,
+          "centroid": {
+            "x": 173.739,
+            "y": 35.546
+          },
+          "bounds": {
+            "left": 90,
+            "top": 24,
+            "right": 236,
+            "bottom": 50,
+            "width": 147,
+            "height": 27
+          }
+        }
+      },
+      "connectedComponents": 5
+    },
+    {
+      "index": 19,
+      "sourceFile": "frame-019.png",
+      "silhouette": {
+        "visiblePixels": 18773,
+        "centroid": {
+          "x": 157.881,
+          "y": 114.505
+        },
+        "bounds": {
+          "left": 64,
+          "top": 24,
+          "right": 262,
+          "bottom": 182,
+          "width": 199,
+          "height": 159
+        }
+      },
+      "regions": {
+        "primaryBody": {
+          "visiblePixels": 18606,
+          "centroid": {
+            "x": 157.884,
+            "y": 115.24
+          },
+          "bounds": {
+            "left": 64,
+            "top": 49,
+            "right": 262,
+            "bottom": 182,
+            "width": 199,
+            "height": 134
+          }
+        },
+        "brightEyeCandidate": {
+          "visiblePixels": 286,
+          "centroid": {
+            "x": 133.437,
+            "y": 139.007
+          },
+          "bounds": {
+            "left": 110,
+            "top": 134,
+            "right": 157,
+            "bottom": 144,
+            "width": 48,
+            "height": 11
+          },
+          "relativeToPrimaryBody": {
+            "x": -24.447,
+            "y": 23.767
+          }
+        },
+        "detachedMatter": {
+          "visiblePixels": 167,
+          "centroid": {
+            "x": 157.605,
+            "y": 32.557
+          },
+          "bounds": {
+            "left": 94,
+            "top": 24,
+            "right": 236,
+            "bottom": 43,
+            "width": 143,
+            "height": 20
+          }
+        }
+      },
+      "connectedComponents": 5
+    },
+    {
+      "index": 20,
+      "sourceFile": "frame-020.png",
+      "silhouette": {
+        "visiblePixels": 18770,
+        "centroid": {
+          "x": 157.884,
+          "y": 114.508
+        },
+        "bounds": {
+          "left": 64,
+          "top": 24,
+          "right": 262,
+          "bottom": 182,
+          "width": 199,
+          "height": 159
+        }
+      },
+      "regions": {
+        "primaryBody": {
+          "visiblePixels": 18603,
+          "centroid": {
+            "x": 157.887,
+            "y": 115.244
+          },
+          "bounds": {
+            "left": 64,
+            "top": 49,
+            "right": 262,
+            "bottom": 182,
+            "width": 199,
+            "height": 134
+          }
+        },
+        "brightEyeCandidate": {
+          "visiblePixels": 286,
+          "centroid": {
+            "x": 133.437,
+            "y": 139.007
+          },
+          "bounds": {
+            "left": 110,
+            "top": 134,
+            "right": 157,
+            "bottom": 144,
+            "width": 48,
+            "height": 11
+          },
+          "relativeToPrimaryBody": {
+            "x": -24.45,
+            "y": 23.763
+          }
+        },
+        "detachedMatter": {
+          "visiblePixels": 167,
+          "centroid": {
+            "x": 157.605,
+            "y": 32.557
+          },
+          "bounds": {
+            "left": 94,
+            "top": 24,
+            "right": 236,
+            "bottom": 43,
+            "width": 143,
+            "height": 20
+          }
+        }
+      },
+      "connectedComponents": 5
+    },
+    {
+      "index": 21,
+      "sourceFile": "frame-021.png",
+      "silhouette": {
+        "visiblePixels": 18770,
+        "centroid": {
+          "x": 157.875,
+          "y": 114.508
+        },
+        "bounds": {
+          "left": 64,
+          "top": 24,
+          "right": 262,
+          "bottom": 182,
+          "width": 199,
+          "height": 159
+        }
+      },
+      "regions": {
+        "primaryBody": {
+          "visiblePixels": 18603,
+          "centroid": {
+            "x": 157.877,
+            "y": 115.244
+          },
+          "bounds": {
+            "left": 64,
+            "top": 49,
+            "right": 262,
+            "bottom": 182,
+            "width": 199,
+            "height": 134
+          }
+        },
+        "brightEyeCandidate": {
+          "visiblePixels": 287,
+          "centroid": {
+            "x": 133.401,
+            "y": 139.024
+          },
+          "bounds": {
+            "left": 110,
+            "top": 134,
+            "right": 157,
+            "bottom": 144,
+            "width": 48,
+            "height": 11
+          },
+          "relativeToPrimaryBody": {
+            "x": -24.476,
+            "y": 23.78
+          }
+        },
+        "detachedMatter": {
+          "visiblePixels": 167,
+          "centroid": {
+            "x": 157.605,
+            "y": 32.557
+          },
+          "bounds": {
+            "left": 94,
+            "top": 24,
+            "right": 236,
+            "bottom": 43,
+            "width": 143,
+            "height": 20
+          }
+        }
+      },
+      "connectedComponents": 5
+    },
+    {
+      "index": 22,
+      "sourceFile": "frame-022.png",
+      "silhouette": {
+        "visiblePixels": 19356,
+        "centroid": {
+          "x": 149.723,
+          "y": 112.191
+        },
+        "bounds": {
+          "left": 48,
+          "top": 53,
+          "right": 267,
+          "bottom": 178,
+          "width": 220,
+          "height": 126
+        }
+      },
+      "regions": {
+        "primaryBody": {
+          "visiblePixels": 19355,
+          "centroid": {
+            "x": 149.719,
+            "y": 112.191
+          },
+          "bounds": {
+            "left": 48,
+            "top": 53,
+            "right": 267,
+            "bottom": 178,
+            "width": 220,
+            "height": 126
+          }
+        },
+        "brightEyeCandidate": {
+          "visiblePixels": 311,
+          "centroid": {
+            "x": 119.926,
+            "y": 136.759
+          },
+          "bounds": {
+            "left": 91,
+            "top": 133,
+            "right": 144,
+            "bottom": 142,
+            "width": 54,
+            "height": 10
+          },
+          "relativeToPrimaryBody": {
+            "x": -29.793,
+            "y": 24.568
+          }
+        },
+        "detachedMatter": {
+          "visiblePixels": 1,
+          "centroid": {
+            "x": 220.0,
+            "y": 103.0
+          },
+          "bounds": {
+            "left": 220,
+            "top": 103,
+            "right": 220,
+            "bottom": 103,
+            "width": 1,
+            "height": 1
+          }
+        }
+      },
+      "connectedComponents": 2
+    },
+    {
+      "index": 23,
+      "sourceFile": "frame-023.png",
+      "silhouette": {
+        "visiblePixels": 19353,
+        "centroid": {
+          "x": 149.717,
+          "y": 112.182
+        },
+        "bounds": {
+          "left": 48,
+          "top": 53,
+          "right": 267,
+          "bottom": 178,
+          "width": 220,
+          "height": 126
+        }
+      },
+      "regions": {
+        "primaryBody": {
+          "visiblePixels": 19352,
+          "centroid": {
+            "x": 149.714,
+            "y": 112.183
+          },
+          "bounds": {
+            "left": 48,
+            "top": 53,
+            "right": 267,
+            "bottom": 178,
+            "width": 220,
+            "height": 126
+          }
+        },
+        "brightEyeCandidate": {
+          "visiblePixels": 311,
+          "centroid": {
+            "x": 119.926,
+            "y": 136.759
+          },
+          "bounds": {
+            "left": 91,
+            "top": 133,
+            "right": 144,
+            "bottom": 142,
+            "width": 54,
+            "height": 10
+          },
+          "relativeToPrimaryBody": {
+            "x": -29.788,
+            "y": 24.576
+          }
+        },
+        "detachedMatter": {
+          "visiblePixels": 1,
+          "centroid": {
+            "x": 220.0,
+            "y": 103.0
+          },
+          "bounds": {
+            "left": 220,
+            "top": 103,
+            "right": 220,
+            "bottom": 103,
+            "width": 1,
+            "height": 1
+          }
+        }
+      },
+      "connectedComponents": 2
+    },
+    {
+      "index": 24,
+      "sourceFile": "frame-024.png",
+      "silhouette": {
+        "visiblePixels": 20424,
+        "centroid": {
+          "x": 143.257,
+          "y": 112.538
+        },
+        "bounds": {
+          "left": 39,
+          "top": 43,
+          "right": 266,
+          "bottom": 181,
+          "width": 228,
+          "height": 139
+        }
+      },
+      "regions": {
+        "primaryBody": {
+          "visiblePixels": 19261,
+          "centroid": {
+            "x": 138.296,
+            "y": 110.479
+          },
+          "bounds": {
+            "left": 39,
+            "top": 43,
+            "right": 266,
+            "bottom": 181,
+            "width": 228,
+            "height": 139
+          }
+        },
+        "brightEyeCandidate": {
+          "visiblePixels": 414,
+          "centroid": {
+            "x": 111.239,
+            "y": 135.155
+          },
+          "bounds": {
+            "left": 81,
+            "top": 131,
+            "right": 140,
+            "bottom": 140,
+            "width": 60,
+            "height": 10
+          },
+          "relativeToPrimaryBody": {
+            "x": -27.057,
+            "y": 24.676
+          }
+        },
+        "detachedMatter": {
+          "visiblePixels": 1163,
+          "centroid": {
+            "x": 225.408,
+            "y": 146.644
+          },
+          "bounds": {
+            "left": 209,
+            "top": 127,
+            "right": 243,
+            "bottom": 167,
+            "width": 35,
+            "height": 41
+          }
+        }
+      },
+      "connectedComponents": 2
+    },
+    {
+      "index": 25,
+      "sourceFile": "frame-025.png",
+      "silhouette": {
+        "visiblePixels": 23059,
+        "centroid": {
+          "x": 163.679,
+          "y": 111.679
+        },
+        "bounds": {
+          "left": 39,
+          "top": 38,
+          "right": 373,
+          "bottom": 180,
+          "width": 335,
+          "height": 143
+        }
+      },
+      "regions": {
+        "primaryBody": {
+          "visiblePixels": 19085,
+          "centroid": {
+            "x": 136.528,
+            "y": 110.903
+          },
+          "bounds": {
+            "left": 39,
+            "top": 38,
+            "right": 251,
+            "bottom": 180,
+            "width": 213,
+            "height": 143
+          }
+        },
+        "brightEyeCandidate": {
+          "visiblePixels": 409,
+          "centroid": {
+            "x": 112.447,
+            "y": 135.181
+          },
+          "bounds": {
+            "left": 82,
+            "top": 131,
+            "right": 141,
+            "bottom": 140,
+            "width": 60,
+            "height": 10
+          },
+          "relativeToPrimaryBody": {
+            "x": -24.081,
+            "y": 24.278
+          }
+        },
+        "detachedMatter": {
+          "visiblePixels": 3974,
+          "centroid": {
+            "x": 294.066,
+            "y": 115.403
+          },
+          "bounds": {
+            "left": 224,
+            "top": 43,
+            "right": 373,
+            "bottom": 178,
+            "width": 150,
+            "height": 136
+          }
+        }
+      },
+      "connectedComponents": 8
+    },
+    {
+      "index": 26,
+      "sourceFile": "frame-026.png",
+      "silhouette": {
+        "visiblePixels": 22367,
+        "centroid": {
+          "x": 163.75,
+          "y": 109.615
+        },
+        "bounds": {
+          "left": 42,
+          "top": 36,
+          "right": 372,
+          "bottom": 180,
+          "width": 331,
+          "height": 145
+        }
+      },
+      "regions": {
+        "primaryBody": {
+          "visiblePixels": 18828,
+          "centroid": {
+            "x": 137.469,
+            "y": 109.882
+          },
+          "bounds": {
+            "left": 42,
+            "top": 36,
+            "right": 231,
+            "bottom": 180,
+            "width": 190,
+            "height": 145
+          }
+        },
+        "brightEyeCandidate": {
+          "visiblePixels": 407,
+          "centroid": {
+            "x": 113.27,
+            "y": 135.192
+          },
+          "bounds": {
+            "left": 83,
+            "top": 131,
+            "right": 141,
+            "bottom": 140,
+            "width": 59,
+            "height": 10
+          },
+          "relativeToPrimaryBody": {
+            "x": -24.199,
+            "y": 25.31
+          }
+        },
+        "detachedMatter": {
+          "visiblePixels": 3539,
+          "centroid": {
+            "x": 303.571,
+            "y": 108.196
+          },
+          "bounds": {
+            "left": 231,
+            "top": 43,
+            "right": 372,
+            "bottom": 178,
+            "width": 142,
+            "height": 136
+          }
+        }
+      },
+      "connectedComponents": 9
+    },
+    {
+      "index": 27,
+      "sourceFile": "frame-027.png",
+      "silhouette": {
+        "visiblePixels": 22347,
+        "centroid": {
+          "x": 163.672,
+          "y": 109.615
+        },
+        "bounds": {
+          "left": 42,
+          "top": 36,
+          "right": 372,
+          "bottom": 180,
+          "width": 331,
+          "height": 145
+        }
+      },
+      "regions": {
+        "primaryBody": {
+          "visiblePixels": 18823,
+          "centroid": {
+            "x": 137.477,
+            "y": 109.889
+          },
+          "bounds": {
+            "left": 42,
+            "top": 36,
+            "right": 231,
+            "bottom": 180,
+            "width": 190,
+            "height": 145
+          }
+        },
+        "brightEyeCandidate": {
+          "visiblePixels": 407,
+          "centroid": {
+            "x": 113.27,
+            "y": 135.192
+          },
+          "bounds": {
+            "left": 83,
+            "top": 131,
+            "right": 141,
+            "bottom": 140,
+            "width": 59,
+            "height": 10
+          },
+          "relativeToPrimaryBody": {
+            "x": -24.207,
+            "y": 25.303
+          }
+        },
+        "detachedMatter": {
+          "visiblePixels": 3524,
+          "centroid": {
+            "x": 303.59,
+            "y": 108.15
+          },
+          "bounds": {
+            "left": 231,
+            "top": 43,
+            "right": 372,
+            "bottom": 178,
+            "width": 142,
+            "height": 136
+          }
+        }
+      },
+      "connectedComponents": 9
+    },
+    {
+      "index": 28,
+      "sourceFile": "frame-028.png",
+      "silhouette": {
+        "visiblePixels": 22348,
+        "centroid": {
+          "x": 163.673,
+          "y": 109.612
+        },
+        "bounds": {
+          "left": 42,
+          "top": 36,
+          "right": 372,
+          "bottom": 180,
+          "width": 331,
+          "height": 145
+        }
+      },
+      "regions": {
+        "primaryBody": {
+          "visiblePixels": 18824,
+          "centroid": {
+            "x": 137.479,
+            "y": 109.885
+          },
+          "bounds": {
+            "left": 42,
+            "top": 36,
+            "right": 231,
+            "bottom": 180,
+            "width": 190,
+            "height": 145
+          }
+        },
+        "brightEyeCandidate": {
+          "visiblePixels": 407,
+          "centroid": {
+            "x": 113.27,
+            "y": 135.192
+          },
+          "bounds": {
+            "left": 83,
+            "top": 131,
+            "right": 141,
+            "bottom": 140,
+            "width": 59,
+            "height": 10
+          },
+          "relativeToPrimaryBody": {
+            "x": -24.209,
+            "y": 25.307
+          }
+        },
+        "detachedMatter": {
+          "visiblePixels": 3524,
+          "centroid": {
+            "x": 303.59,
+            "y": 108.15
+          },
+          "bounds": {
+            "left": 231,
+            "top": 43,
+            "right": 372,
+            "bottom": 178,
+            "width": 142,
+            "height": 136
+          }
+        }
+      },
+      "connectedComponents": 9
+    },
+    {
+      "index": 29,
+      "sourceFile": "frame-029.png",
+      "silhouette": {
+        "visiblePixels": 19989,
+        "centroid": {
+          "x": 125.597,
+          "y": 111.406
+        },
+        "bounds": {
+          "left": 34,
+          "top": 25,
+          "right": 215,
+          "bottom": 190,
+          "width": 182,
+          "height": 166
+        }
+      },
+      "regions": {
+        "primaryBody": {
+          "visiblePixels": 19989,
+          "centroid": {
+            "x": 125.597,
+            "y": 111.406
+          },
+          "bounds": {
+            "left": 34,
+            "top": 25,
+            "right": 215,
+            "bottom": 190,
+            "width": 182,
+            "height": 166
+          }
+        },
+        "brightEyeCandidate": {
+          "visiblePixels": 0,
+          "centroid": null,
+          "bounds": null,
+          "relativeToPrimaryBody": null
+        },
+        "detachedMatter": {
+          "visiblePixels": 0,
+          "centroid": null,
+          "bounds": null
+        }
+      },
+      "connectedComponents": 1
+    },
+    {
+      "index": 30,
+      "sourceFile": "frame-030.png",
+      "silhouette": {
+        "visiblePixels": 21561,
+        "centroid": {
+          "x": 111.812,
+          "y": 110.435
+        },
+        "bounds": {
+          "left": 17,
+          "top": 26,
+          "right": 218,
+          "bottom": 190,
+          "width": 202,
+          "height": 165
+        }
+      },
+      "regions": {
+        "primaryBody": {
+          "visiblePixels": 19898,
+          "centroid": {
+            "x": 104.439,
+            "y": 111.023
+          },
+          "bounds": {
+            "left": 17,
+            "top": 26,
+            "right": 178,
+            "bottom": 190,
+            "width": 162,
+            "height": 165
+          }
+        },
+        "brightEyeCandidate": {
+          "visiblePixels": 0,
+          "centroid": null,
+          "bounds": null,
+          "relativeToPrimaryBody": null
+        },
+        "detachedMatter": {
+          "visiblePixels": 1663,
+          "centroid": {
+            "x": 200.038,
+            "y": 103.397
+          },
+          "bounds": {
+            "left": 182,
+            "top": 76,
+            "right": 218,
+            "bottom": 132,
+            "width": 37,
+            "height": 57
+          }
+        }
+      },
+      "connectedComponents": 2
+    },
+    {
+      "index": 31,
+      "sourceFile": "frame-031.png",
+      "silhouette": {
+        "visiblePixels": 21259,
+        "centroid": {
+          "x": 102.676,
+          "y": 107.484
+        },
+        "bounds": {
+          "left": 7,
+          "top": 27,
+          "right": 218,
+          "bottom": 189,
+          "width": 212,
+          "height": 163
+        }
+      },
+      "regions": {
+        "primaryBody": {
+          "visiblePixels": 20213,
+          "centroid": {
+            "x": 97.469,
+            "y": 107.774
+          },
+          "bounds": {
+            "left": 7,
+            "top": 27,
+            "right": 187,
+            "bottom": 189,
+            "width": 181,
+            "height": 163
+          }
+        },
+        "brightEyeCandidate": {
+          "visiblePixels": 37,
+          "centroid": {
+            "x": 125.432,
+            "y": 141.243
+          },
+          "bounds": {
+            "left": 114,
+            "top": 140,
+            "right": 137,
+            "bottom": 142,
+            "width": 24,
+            "height": 3
+          },
+          "relativeToPrimaryBody": {
+            "x": 27.963,
+            "y": 33.469
+          }
+        },
+        "detachedMatter": {
+          "visiblePixels": 1046,
+          "centroid": {
+            "x": 203.291,
+            "y": 101.897
+          },
+          "bounds": {
+            "left": 189,
+            "top": 80,
+            "right": 218,
+            "bottom": 126,
+            "width": 30,
+            "height": 47
+          }
+        }
+      },
+      "connectedComponents": 2
+    },
+    {
+      "index": 32,
+      "sourceFile": "frame-032.png",
+      "silhouette": {
+        "visiblePixels": 23310,
+        "centroid": {
+          "x": 110.797,
+          "y": 109.969
+        },
+        "bounds": {
+          "left": 4,
+          "top": 28,
+          "right": 218,
+          "bottom": 188,
+          "width": 215,
+          "height": 161
+        }
+      },
+      "regions": {
+        "primaryBody": {
+          "visiblePixels": 23309,
+          "centroid": {
+            "x": 110.8,
+            "y": 109.967
+          },
+          "bounds": {
+            "left": 4,
+            "top": 28,
+            "right": 218,
+            "bottom": 188,
+            "width": 215,
+            "height": 161
+          }
+        },
+        "brightEyeCandidate": {
+          "visiblePixels": 193,
+          "centroid": {
+            "x": 148.088,
+            "y": 139.767
+          },
+          "bounds": {
+            "left": 120,
+            "top": 138,
+            "right": 177,
+            "bottom": 142,
+            "width": 58,
+            "height": 5
+          },
+          "relativeToPrimaryBody": {
+            "x": 37.288,
+            "y": 29.8
+          }
+        },
+        "detachedMatter": {
+          "visiblePixels": 1,
+          "centroid": {
+            "x": 47.0,
+            "y": 144.0
+          },
+          "bounds": {
+            "left": 47,
+            "top": 144,
+            "right": 47,
+            "bottom": 144,
+            "width": 1,
+            "height": 1
+          }
+        }
+      },
+      "connectedComponents": 2
+    },
+    {
+      "index": 33,
+      "sourceFile": "frame-033.png",
+      "silhouette": {
+        "visiblePixels": 23311,
+        "centroid": {
+          "x": 110.794,
+          "y": 109.966
+        },
+        "bounds": {
+          "left": 4,
+          "top": 28,
+          "right": 218,
+          "bottom": 188,
+          "width": 215,
+          "height": 161
+        }
+      },
+      "regions": {
+        "primaryBody": {
+          "visiblePixels": 23310,
+          "centroid": {
+            "x": 110.796,
+            "y": 109.965
+          },
+          "bounds": {
+            "left": 4,
+            "top": 28,
+            "right": 218,
+            "bottom": 188,
+            "width": 215,
+            "height": 161
+          }
+        },
+        "brightEyeCandidate": {
+          "visiblePixels": 193,
+          "centroid": {
+            "x": 148.088,
+            "y": 139.767
+          },
+          "bounds": {
+            "left": 120,
+            "top": 138,
+            "right": 177,
+            "bottom": 142,
+            "width": 58,
+            "height": 5
+          },
+          "relativeToPrimaryBody": {
+            "x": 37.292,
+            "y": 29.802
+          }
+        },
+        "detachedMatter": {
+          "visiblePixels": 1,
+          "centroid": {
+            "x": 47.0,
+            "y": 144.0
+          },
+          "bounds": {
+            "left": 47,
+            "top": 144,
+            "right": 47,
+            "bottom": 144,
+            "width": 1,
+            "height": 1
+          }
+        }
+      },
+      "connectedComponents": 2
+    },
+    {
+      "index": 34,
+      "sourceFile": "frame-034.png",
+      "silhouette": {
+        "visiblePixels": 20803,
+        "centroid": {
+          "x": 129.14,
+          "y": 108.811
+        },
+        "bounds": {
+          "left": 4,
+          "top": 32,
+          "right": 229,
+          "bottom": 190,
+          "width": 226,
+          "height": 159
+        }
+      },
+      "regions": {
+        "primaryBody": {
+          "visiblePixels": 17348,
+          "centroid": {
+            "x": 144.573,
+            "y": 104.975
+          },
+          "bounds": {
+            "left": 46,
+            "top": 32,
+            "right": 229,
+            "bottom": 187,
+            "width": 184,
+            "height": 156
+          }
+        },
+        "brightEyeCandidate": {
+          "visiblePixels": 273,
+          "centroid": {
+            "x": 167.308,
+            "y": 137.374
+          },
+          "bounds": {
+            "left": 144,
+            "top": 134,
+            "right": 192,
+            "bottom": 142,
+            "width": 49,
+            "height": 9
+          },
+          "relativeToPrimaryBody": {
+            "x": 22.735,
+            "y": 32.399
+          }
+        },
+        "detachedMatter": {
+          "visiblePixels": 3455,
+          "centroid": {
+            "x": 51.647,
+            "y": 128.077
+          },
+          "bounds": {
+            "left": 4,
+            "top": 53,
+            "right": 114,
+            "bottom": 190,
+            "width": 111,
+            "height": 138
+          }
+        }
+      },
+      "connectedComponents": 4
+    }
+  ],
+  "transitions": [
+    {
+      "fromFrame": 1,
+      "toFrame": 2,
+      "primaryBodyDisplacementPx": {
+        "x": 0.02,
+        "y": -0.03
+      },
+      "primaryBodyDistancePx": 0.036,
+      "silhouetteIoU": 0.999,
+      "alignedSilhouetteIoU": 0.999,
+      "newlyOccupiedPixels": 4,
+      "newlyEmptyPixels": 22,
+      "nearIdenticalHold": true
+    },
+    {
+      "fromFrame": 2,
+      "toFrame": 3,
+      "primaryBodyDisplacementPx": {
+        "x": 6.039,
+        "y": 0.173
+      },
+      "primaryBodyDistancePx": 6.041,
+      "silhouetteIoU": 0.793,
+      "alignedSilhouetteIoU": 0.764,
+      "newlyOccupiedPixels": 2201,
+      "newlyEmptyPixels": 2335,
+      "nearIdenticalHold": false
+    },
+    {
+      "fromFrame": 3,
+      "toFrame": 4,
+      "primaryBodyDisplacementPx": {
+        "x": -0.001,
+        "y": -0.002
+      },
+      "primaryBodyDistancePx": 0.002,
+      "silhouetteIoU": 0.999,
+      "alignedSilhouetteIoU": 0.999,
+      "newlyOccupiedPixels": 7,
+      "newlyEmptyPixels": 4,
+      "nearIdenticalHold": true
+    },
+    {
+      "fromFrame": 4,
+      "toFrame": 5,
+      "primaryBodyDisplacementPx": {
+        "x": 0.001,
+        "y": 0.002
+      },
+      "primaryBodyDistancePx": 0.002,
+      "silhouetteIoU": 0.999,
+      "alignedSilhouetteIoU": 0.999,
+      "newlyOccupiedPixels": 4,
+      "newlyEmptyPixels": 7,
+      "nearIdenticalHold": true
+    },
+    {
+      "fromFrame": 5,
+      "toFrame": 6,
+      "primaryBodyDisplacementPx": {
+        "x": -0.001,
+        "y": -0.002
+      },
+      "primaryBodyDistancePx": 0.002,
+      "silhouetteIoU": 0.999,
+      "alignedSilhouetteIoU": 0.999,
+      "newlyOccupiedPixels": 7,
+      "newlyEmptyPixels": 4,
+      "nearIdenticalHold": true
+    },
+    {
+      "fromFrame": 6,
+      "toFrame": 7,
+      "primaryBodyDisplacementPx": {
+        "x": -0.829,
+        "y": -0.181
+      },
+      "primaryBodyDistancePx": 0.849,
+      "silhouetteIoU": 0.827,
+      "alignedSilhouetteIoU": 0.83,
+      "newlyOccupiedPixels": 952,
+      "newlyEmptyPixels": 2599,
+      "nearIdenticalHold": false
+    },
+    {
+      "fromFrame": 7,
+      "toFrame": 8,
+      "primaryBodyDisplacementPx": {
+        "x": -0.006,
+        "y": -0.007
+      },
+      "primaryBodyDistancePx": 0.009,
+      "silhouetteIoU": 1.0,
+      "alignedSilhouetteIoU": 1.0,
+      "newlyOccupiedPixels": 0,
+      "newlyEmptyPixels": 4,
+      "nearIdenticalHold": true
+    },
+    {
+      "fromFrame": 8,
+      "toFrame": 9,
+      "primaryBodyDisplacementPx": {
+        "x": 3.111,
+        "y": 4.541
+      },
+      "primaryBodyDistancePx": 5.504,
+      "silhouetteIoU": 0.826,
+      "alignedSilhouetteIoU": 0.747,
+      "newlyOccupiedPixels": 1086,
+      "newlyEmptyPixels": 2216,
+      "nearIdenticalHold": false
+    },
+    {
+      "fromFrame": 9,
+      "toFrame": 10,
+      "primaryBodyDisplacementPx": {
+        "x": 0.012,
+        "y": -0.018
+      },
+      "primaryBodyDistancePx": 0.022,
+      "silhouetteIoU": 1.0,
+      "alignedSilhouetteIoU": 1.0,
+      "newlyOccupiedPixels": 3,
+      "newlyEmptyPixels": 5,
+      "nearIdenticalHold": true
+    },
+    {
+      "fromFrame": 10,
+      "toFrame": 11,
+      "primaryBodyDisplacementPx": {
+        "x": -0.017,
+        "y": -0.046
+      },
+      "primaryBodyDistancePx": 0.049,
+      "silhouetteIoU": 0.997,
+      "alignedSilhouetteIoU": 0.997,
+      "newlyOccupiedPixels": 12,
+      "newlyEmptyPixels": 38,
+      "nearIdenticalHold": true
+    },
+    {
+      "fromFrame": 11,
+      "toFrame": 12,
+      "primaryBodyDisplacementPx": {
+        "x": -2.118,
+        "y": 1.935
+      },
+      "primaryBodyDistancePx": 2.869,
+      "silhouetteIoU": 0.889,
+      "alignedSilhouetteIoU": 0.861,
+      "newlyOccupiedPixels": 655,
+      "newlyEmptyPixels": 1284,
+      "nearIdenticalHold": false
+    },
+    {
+      "fromFrame": 12,
+      "toFrame": 13,
+      "primaryBodyDisplacementPx": {
+        "x": 0.223,
+        "y": 0.031
+      },
+      "primaryBodyDistancePx": 0.225,
+      "silhouetteIoU": 0.989,
+      "alignedSilhouetteIoU": 0.989,
+      "newlyOccupiedPixels": 94,
+      "newlyEmptyPixels": 81,
+      "nearIdenticalHold": false
+    },
+    {
+      "fromFrame": 13,
+      "toFrame": 14,
+      "primaryBodyDisplacementPx": {
+        "x": 0.004,
+        "y": 0.002
+      },
+      "primaryBodyDistancePx": 0.004,
+      "silhouetteIoU": 1.0,
+      "alignedSilhouetteIoU": 1.0,
+      "newlyOccupiedPixels": 0,
+      "newlyEmptyPixels": 1,
+      "nearIdenticalHold": true
+    },
+    {
+      "fromFrame": 14,
+      "toFrame": 15,
+      "primaryBodyDisplacementPx": {
+        "x": 3.467,
+        "y": 4.686
+      },
+      "primaryBodyDistancePx": 5.829,
+      "silhouetteIoU": 0.808,
+      "alignedSilhouetteIoU": 0.803,
+      "newlyOccupiedPixels": 1685,
+      "newlyEmptyPixels": 1728,
+      "nearIdenticalHold": false
+    },
+    {
+      "fromFrame": 15,
+      "toFrame": 16,
+      "primaryBodyDisplacementPx": {
+        "x": 0.0,
+        "y": -0.014
+      },
+      "primaryBodyDistancePx": 0.014,
+      "silhouetteIoU": 1.0,
+      "alignedSilhouetteIoU": 1.0,
+      "newlyOccupiedPixels": 1,
+      "newlyEmptyPixels": 3,
+      "nearIdenticalHold": true
+    },
+    {
+      "fromFrame": 16,
+      "toFrame": 17,
+      "primaryBodyDisplacementPx": {
+        "x": -0.011,
+        "y": -0.013
+      },
+      "primaryBodyDistancePx": 0.017,
+      "silhouetteIoU": 0.999,
+      "alignedSilhouetteIoU": 0.999,
+      "newlyOccupiedPixels": 4,
+      "newlyEmptyPixels": 8,
+      "nearIdenticalHold": true
+    },
+    {
+      "fromFrame": 17,
+      "toFrame": 18,
+      "primaryBodyDisplacementPx": {
+        "x": -3.315,
+        "y": 1.276
+      },
+      "primaryBodyDistancePx": 3.552,
+      "silhouetteIoU": 0.786,
+      "alignedSilhouetteIoU": 0.776,
+      "newlyOccupiedPixels": 2399,
+      "newlyEmptyPixels": 1557,
+      "nearIdenticalHold": false
+    },
+    {
+      "fromFrame": 18,
+      "toFrame": 19,
+      "primaryBodyDisplacementPx": {
+        "x": -10.417,
+        "y": -0.138
+      },
+      "primaryBodyDistancePx": 10.418,
+      "silhouetteIoU": 0.775,
+      "alignedSilhouetteIoU": 0.747,
+      "newlyOccupiedPixels": 3189,
+      "newlyEmptyPixels": 1337,
+      "nearIdenticalHold": false
+    },
+    {
+      "fromFrame": 19,
+      "toFrame": 20,
+      "primaryBodyDisplacementPx": {
+        "x": 0.003,
+        "y": 0.004
+      },
+      "primaryBodyDistancePx": 0.005,
+      "silhouetteIoU": 1.0,
+      "alignedSilhouetteIoU": 1.0,
+      "newlyOccupiedPixels": 0,
+      "newlyEmptyPixels": 3,
+      "nearIdenticalHold": true
+    },
+    {
+      "fromFrame": 20,
+      "toFrame": 21,
+      "primaryBodyDisplacementPx": {
+        "x": -0.01,
+        "y": 0.0
+      },
+      "primaryBodyDistancePx": 0.01,
+      "silhouetteIoU": 0.999,
+      "alignedSilhouetteIoU": 0.999,
+      "newlyOccupiedPixels": 6,
+      "newlyEmptyPixels": 6,
+      "nearIdenticalHold": true
+    },
+    {
+      "fromFrame": 21,
+      "toFrame": 22,
+      "primaryBodyDisplacementPx": {
+        "x": -8.158,
+        "y": -3.053
+      },
+      "primaryBodyDistancePx": 8.711,
+      "silhouetteIoU": 0.797,
+      "alignedSilhouetteIoU": 0.81,
+      "newlyOccupiedPixels": 2447,
+      "newlyEmptyPixels": 1861,
+      "nearIdenticalHold": false
+    },
+    {
+      "fromFrame": 22,
+      "toFrame": 23,
+      "primaryBodyDisplacementPx": {
+        "x": -0.005,
+        "y": -0.008
+      },
+      "primaryBodyDistancePx": 0.009,
+      "silhouetteIoU": 1.0,
+      "alignedSilhouetteIoU": 1.0,
+      "newlyOccupiedPixels": 0,
+      "newlyEmptyPixels": 3,
+      "nearIdenticalHold": true
+    },
+    {
+      "fromFrame": 23,
+      "toFrame": 24,
+      "primaryBodyDisplacementPx": {
+        "x": -11.418,
+        "y": -1.704
+      },
+      "primaryBodyDistancePx": 11.544,
+      "silhouetteIoU": 0.81,
+      "alignedSilhouetteIoU": 0.773,
+      "newlyOccupiedPixels": 2618,
+      "newlyEmptyPixels": 1547,
+      "nearIdenticalHold": false
+    },
+    {
+      "fromFrame": 24,
+      "toFrame": 25,
+      "primaryBodyDisplacementPx": {
+        "x": -1.768,
+        "y": 0.424
+      },
+      "primaryBodyDistancePx": 1.818,
+      "silhouetteIoU": 0.698,
+      "alignedSilhouetteIoU": 0.682,
+      "newlyOccupiedPixels": 5183,
+      "newlyEmptyPixels": 2548,
+      "nearIdenticalHold": false
+    },
+    {
+      "fromFrame": 25,
+      "toFrame": 26,
+      "primaryBodyDisplacementPx": {
+        "x": 0.941,
+        "y": -1.021
+      },
+      "primaryBodyDistancePx": 1.388,
+      "silhouetteIoU": 0.651,
+      "alignedSilhouetteIoU": 0.657,
+      "newlyOccupiedPixels": 4463,
+      "newlyEmptyPixels": 5155,
+      "nearIdenticalHold": false
+    },
+    {
+      "fromFrame": 26,
+      "toFrame": 27,
+      "primaryBodyDisplacementPx": {
+        "x": 0.008,
+        "y": 0.007
+      },
+      "primaryBodyDistancePx": 0.011,
+      "silhouetteIoU": 0.997,
+      "alignedSilhouetteIoU": 0.997,
+      "newlyOccupiedPixels": 18,
+      "newlyEmptyPixels": 38,
+      "nearIdenticalHold": true
+    },
+    {
+      "fromFrame": 27,
+      "toFrame": 28,
+      "primaryBodyDisplacementPx": {
+        "x": 0.002,
+        "y": -0.004
+      },
+      "primaryBodyDistancePx": 0.004,
+      "silhouetteIoU": 1.0,
+      "alignedSilhouetteIoU": 1.0,
+      "newlyOccupiedPixels": 1,
+      "newlyEmptyPixels": 0,
+      "nearIdenticalHold": true
+    },
+    {
+      "fromFrame": 28,
+      "toFrame": 29,
+      "primaryBodyDisplacementPx": {
+        "x": -11.882,
+        "y": 1.521
+      },
+      "primaryBodyDistancePx": 11.979,
+      "silhouetteIoU": 0.655,
+      "alignedSilhouetteIoU": 0.734,
+      "newlyOccupiedPixels": 3233,
+      "newlyEmptyPixels": 5592,
+      "nearIdenticalHold": false
+    },
+    {
+      "fromFrame": 29,
+      "toFrame": 30,
+      "primaryBodyDisplacementPx": {
+        "x": -21.158,
+        "y": -0.383
+      },
+      "primaryBodyDistancePx": 21.161,
+      "silhouetteIoU": 0.75,
+      "alignedSilhouetteIoU": 0.808,
+      "newlyOccupiedPixels": 3750,
+      "newlyEmptyPixels": 2178,
+      "nearIdenticalHold": false
+    },
+    {
+      "fromFrame": 30,
+      "toFrame": 31,
+      "primaryBodyDisplacementPx": {
+        "x": -6.97,
+        "y": -3.249
+      },
+      "primaryBodyDistancePx": 7.69,
+      "silhouetteIoU": 0.771,
+      "alignedSilhouetteIoU": 0.814,
+      "newlyOccupiedPixels": 2623,
+      "newlyEmptyPixels": 2925,
+      "nearIdenticalHold": false
+    },
+    {
+      "fromFrame": 31,
+      "toFrame": 32,
+      "primaryBodyDisplacementPx": {
+        "x": 13.331,
+        "y": 2.193
+      },
+      "primaryBodyDistancePx": 13.51,
+      "silhouetteIoU": 0.764,
+      "alignedSilhouetteIoU": 0.692,
+      "newlyOccupiedPixels": 4006,
+      "newlyEmptyPixels": 1955,
+      "nearIdenticalHold": false
+    },
+    {
+      "fromFrame": 32,
+      "toFrame": 33,
+      "primaryBodyDisplacementPx": {
+        "x": -0.004,
+        "y": -0.002
+      },
+      "primaryBodyDistancePx": 0.004,
+      "silhouetteIoU": 1.0,
+      "alignedSilhouetteIoU": 1.0,
+      "newlyOccupiedPixels": 1,
+      "newlyEmptyPixels": 0,
+      "nearIdenticalHold": true
+    },
+    {
+      "fromFrame": 33,
+      "toFrame": 34,
+      "primaryBodyDisplacementPx": {
+        "x": 33.777,
+        "y": -4.99
+      },
+      "primaryBodyDistancePx": 34.144,
+      "silhouetteIoU": 0.686,
+      "alignedSilhouetteIoU": 0.589,
+      "newlyOccupiedPixels": 2847,
+      "newlyEmptyPixels": 5355,
+      "nearIdenticalHold": false
+    }
+  ],
+  "methodology": {
+    "colorClasses": "grayscale <=93 or >=139; background gray 102 excluded",
+    "primaryBody": "largest 8-connected occupied component per frame, not stable particle IDs",
+    "brightEyeCandidate": "all occupied pixels >=139; may vanish or overlap other light details",
+    "detachedMatter": "all occupied pixels outside the primary component",
+    "holds": "body center change <= 0.5px and full silhouette IoU >= 0.995",
+    "caveats": [
+      "Source PNG does not encode time; durations are unknown without an explicit parameter.",
+      "Near-identical frames are not proof of duration or sustained stops.",
+      "The final frame cannot show what happens after the sequence ends.",
+      "Connected-component membership can change when parts touch or separate.",
+      "No stable particle identities or 11-region anatomical assignments can be deduced from these PNGs alone.",
+      "The source canvas is not the 200x200 runtime coordinate system; no crop or rescale has been applied."
+    ]
+  }
+}
