@@ -366,3 +366,28 @@ Le mode « Visualiser les zones » conserve ses couleurs temporaires de diagnost
 
 Les futurs états devront être représentés par leurs propres animations cibles,
 comme `idle`, plutôt que par un changement automatique de palette.
+
+
+### V2.4 — Inspecteur de frames idle
+
+L'animation source contient 40 poses cibles sur 3,2 s (80 ms par pose).
+La page permet maintenant de **figer la frame actuelle**, d'avancer ou reculer
+image par image et de choisir la **dernière frame** de la boucle sans modifier
+l'asset. Les numéros affichés vont de **1 à 40** ; l'API JavaScript utilise des
+indices **0 à 39**. La sélection affiche la pose de référence **exacte**, sans
+attendre le retour élastique des particules. La simulation est temporairement
+figée pendant l'inspection mais elle reprend normalement après « Reprendre ».
+
+Exemples depuis la console :
+
+```js
+window.persona.dispatch({ type: 'animation', action: 'seek', frame: 17 }); // affiche la frame 18/40
+window.persona.dispatch({ type: 'animation', action: 'loop-end', frame: 17 }); // boucle de 18 frames / 1,44 s
+window.persona.dispatch({ type: 'animation', action: 'resume' });
+```
+
+Ces réglages sont **temporaires**, enregistrés uniquement pendant la session.
+Ils permettent de choisir le bon point d'arrêt avant de demander une correction.
+Quand la boucle est raccourcie, son retour de la dernière frame vers la première
+peut ne pas être fluide si ces silhouettes diffèrent : la version finale pourra
+ré-exporter un raccord artistique adapté au numéro choisi.

@@ -154,6 +154,13 @@ class BehaviorController {
   controlAnimation(command) {
     if (!this.animationPlayer) throw new RangeError('Aucune animation cible disponible.');
     if (command.action === 'stop') return this.animationPlayer.stop();
+    if (command.action === 'pause') return this.animationPlayer.pauseForInspection();
+    if (command.action === 'resume') return this.animationPlayer.resume();
+    if (command.action === 'loop-end') return this.animationPlayer.setLoopEndFrame(command.frame);
+    if (command.action === 'seek') {
+      if (this.state !== 'idle') this.setState('idle');
+      return this.animationPlayer.inspectFrame(command.frame);
+    }
     if (command.action !== undefined && command.action !== 'play') {
       throw new RangeError('Action d’animation inconnue.');
     }

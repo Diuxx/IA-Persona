@@ -55,7 +55,27 @@
             <button id="play-idle" type="button">Jouer l’idle</button>
             <button id="stop-idle" type="button" class="secondary">Arrêter l’idle</button>
           </div>
-          <p class="target-animation-status" id="animation-status" aria-live="off">Initialisation…</p>
+          <div class="frame-inspector" aria-label="Inspection de l'animation idle">
+            <div class="frame-inspector-heading">
+              <label for="idle-frame">Frame à contrôler</label>
+              <output id="idle-frame-value" for="idle-frame">1 / 40</output>
+            </div>
+            <input id="idle-frame" type="range" min="1" max="40" step="1" value="1" />
+            <div class="frame-inspector-actions">
+              <button id="idle-prev" type="button" class="secondary" aria-label="Frame précédente">←</button>
+              <button id="idle-freeze" type="button" class="secondary">Figer</button>
+              <button id="idle-next" type="button" class="secondary" aria-label="Frame suivante">→</button>
+              <button id="idle-resume" type="button" class="secondary">Reprendre</button>
+            </div>
+            <div class="frame-inspector-heading">
+              <label for="idle-loop-end">Dernière frame de la boucle</label>
+              <output id="idle-loop-end-value" for="idle-loop-end">40 / 40</output>
+            </div>
+            <input id="idle-loop-end" type="range" min="2" max="40" step="1" value="40" />
+            <p class="frame-inspector-note" id="idle-loop-duration">Boucle de 3,20 s</p>
+            <p class="frame-inspector-note">Glisse le curseur pour figer une frame et relève son numéro pour me demander une correction.</p>
+          </div>
+          <p class="target-animation-status" id="animation-status" aria-live="polite">Initialisation…</p>
         </div>
         <div class="behavior-controls" aria-label="Comportements du personnage">
           <div class="control-group">

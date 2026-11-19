@@ -38,6 +38,13 @@ const roleTargetControl = document.querySelector('#role-target');
 const animationStatus = document.querySelector('#animation-status');
 const playIdleButton = document.querySelector('#play-idle');
 const stopIdleButton = document.querySelector('#stop-idle');
+const idleFrameControl = document.querySelector('#idle-frame');
+const idleFrameValue = document.querySelector('#idle-frame-value');
+const idleLoopEndControl = document.querySelector('#idle-loop-end');
+const idleLoopEndValue = document.querySelector('#idle-loop-end-value');
+const idleLoopDuration = document.querySelector('#idle-loop-duration');
+const idleFreezeButton = document.querySelector('#idle-freeze');
+const idleResumeButton = document.querySelector('#idle-resume');
 
 canvas.width = world.size;
 canvas.height = world.size;
@@ -97,7 +104,8 @@ const BEHAVIOR_LABELS = Object.freeze({
 });
 
 function updateStatus() {
-  status.textContent = world.paused ? 'En pause' :
+  status.textContent = targetPlayer.inspecting ? 'Idle · frame figée pour contrôle' :
+    world.paused ? 'En pause' :
     world.mode === 'reveal' ? 'Révélation · couleurs en mouvement' :
     world.mode === 'explode' ? 'Explosion · retour élastique' :
     targetPlayer.playing ? 'Idle · animation reconstruite par les pixels' :
@@ -113,11 +121,33 @@ function syncBehaviorControls() {
   voiceValue.textContent = `${voiceControl.value} %`;
   voiceControl.disabled = snapshot.state !== 'speaking';
   refreshRoleLegend();
-  animationStatus.textContent = targetPlayer.playing
-    ? `Frame ${targetPlayer.frame + 1}/${targetPlayer.frames.length} · 3,2 s en boucle`
-    : 'Animation arrêtée · physique libre';
-  stopIdleButton.disabled = !targetPlayer.playing;
+  syncAnimationControls();
   updateStatus();
+}
+
+function syncAnimationControls() {
+  const animation = targetPlayer.getSnapshot();
+  idleFrameControl.value = String(animation.frame + 1);
+  idleFrameValue.textContent = `${animation.frame + 1} / ${animation.frameCount}`;
+  idleLoopEndControl.value = String(animation.loopEndFrame + 1);
+  idleLoopEndValue.textContent = `${animation.loopEndFrame + 1} / ${animation.frameCount}`;
+  idleLoopDuration.textContent = `Boucle de ${(animation.playbackDurationMs / 1000).toFixed(2).replace('.', ',')} s · ${animation.frameDurationMs.toFixed(0)} ms/frame`;
+  animationStatus.textContent = animation.inspecting
+    ? `Frame ${animation.frame + 1} figée · prête pour inspection`
+    : animation.playing
+      ? `Lecture : frame ${animation.frame + 1}/${animation.loopEndFrame + 1}`
+      : 'Animation arrêtée · physique libre';
+  stopIdleButton.disabled = !animation.playing;
+  idleFreezeButton.disabled = !animation.playing || animation.inspecting;
+  idleResumeButton.disabled = !animation.inspecting;
+}
+
+function inspectFrame(index) {
+  controller.dispatch({ type: 'animation', action: 'seek', frame: index });
+  accumulator = 0;
+  lastTimestamp = null;
+  syncBehaviorControls();
+  render();
 }
 
 function render() {
@@ -130,7 +160,7 @@ function animate(timestamp) {
   lastTimestamp = timestamp;
 
   const simulationStart = performance.now();
-  if (world.paused) {
+  if (world.paused || targetPlayer.inspecting) {
     accumulator = 0;
   } else {
     accumulator += dt;
@@ -150,10 +180,7 @@ function animate(timestamp) {
   simulationTimeTotal += renderStart - simulationStart;
   renderingTimeTotal += renderEnd - renderStart;
   updateStatus();
-  animationStatus.textContent = targetPlayer.playing
-    ? `Frame ${targetPlayer.frame + 1}/${targetPlayer.frames.length} · 3,2 s en boucle`
-    : 'Animation arrêtée · physique libre';
-  stopIdleButton.disabled = !targetPlayer.playing;
+  syncAnimationControls();
 
   frameCounter++;
   if (!fpsStart) fpsStart = timestamp;
@@ -196,6 +223,30 @@ playIdleButton.addEventListener('click', () => {
 stopIdleButton.addEventListener('click', () => {
   controller.dispatch({ type: 'animation', action: 'stop' });
   syncBehaviorControls();
+});
+
+idleFrameControl.addEventListener('input', () => inspectFrame(Number(idleFrameControl.value) - 1));
+document.querySelector('#idle-prev').addEventListener('click', () => {
+  inspectFrame(Math.max(0, targetPlayer.frame - 1));
+});
+document.querySelector('#idle-next').addEventListener('click', () => {
+  inspectFrame(Math.min(targetPlayer.frames.length - 1, targetPlayer.frame + 1));
+});
+idleFreezeButton.addEventListener('click', () => {
+  controller.dispatch({ type: 'animation', action: 'pause' });
+  accumulator = 0;
+  lastTimestamp = null;
+  syncBehaviorControls();
+});
+idleResumeButton.addEventListener('click', () => {
+  controller.dispatch({ type: 'animation', action: 'resume' });
+  accumulator = 0;
+  lastTimestamp = null;
+  syncBehaviorControls();
+});
+idleLoopEndControl.addEventListener('input', () => {
+  controller.dispatch({ type: 'animation', action: 'loop-end', frame: Number(idleLoopEndControl.value) - 1 });
+  syncAnimationControls();
 });
 
 stateControl.addEventListener('change', () => {

@@ -107,3 +107,14 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .preview-card { align-self: start; }
 .stage { flex: none; height: min(650px, 65vh); min-height: 480px; }
 @media (max-width: 750px) { .stage { height: 440px; min-height: 360px; } }
+
+/* V2.4 inspector: separate preview navigation from the global physics pause. */
+.frame-inspector { display: grid; gap: 10px; margin-top: 18px; padding-top: 16px; border-top: 1px solid #453c50; }
+.frame-inspector-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12px; }
+.frame-inspector-heading label { font-weight: 650; color: #e8e2ef; }
+.frame-inspector-heading output { font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.frame-inspector input[type=range] { margin: 0; min-height: 24px; }
+.frame-inspector-actions { display: grid; grid-template-columns: 42px minmax(0, 1fr) 42px minmax(0, 1fr); gap: 6px; }
+.frame-inspector-actions button { min-width: 0; padding: 10px 5px; font-size: 11px; }
+.frame-inspector-note { margin: 0; color: #b3a8c0; font-size: 11px; line-height: 1.5; font-variant-numeric: tabular-nums; }
+@media (max-width: 420px) { .frame-inspector-actions { grid-template-columns: 42px 1fr 42px 1fr; } }

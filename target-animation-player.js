@@ -90,8 +90,10 @@ class TargetAnimationPlayer {
     this.frames = frames;
     this.elapsed = 0;
     this.frame = 0;
+    this.loopEndFrame = frames.length - 1;
     this.loop = true;
     this.playing = false;
+    this.inspecting = false;
   }
 
   static async create(world, animation) {
@@ -102,18 +104,74 @@ class TargetAnimationPlayer {
     return new TargetAnimationPlayer(world, animation, frames);
   }
 
+  get frameDurationMs() {
+    return this.animation.durationMs / this.frames.length;
+  }
+
+  get playbackDurationMs() {
+    return (this.loopEndFrame + 1) * this.frameDurationMs;
+  }
+
   play({ loop = true } = {}) {
     if (typeof loop !== 'boolean') throw new TypeError('La boucle doit être un booléen.');
     this.loop = loop;
     this.elapsed = 0;
+    this.inspecting = false;
     this.playing = true;
     this.applyPose();
     return true;
   }
 
+  /** Freeze at the nearest complete target frame so its original shape can be inspected. */
+  pauseForInspection() {
+    if (!this.playing || this.inspecting) return false;
+    this.inspectFrame(this.frame);
+    return true;
+  }
+
+  /** Frame indexes are zero-based in the API and one-based in the interface. */
+  inspectFrame(index) {
+    this.validateFrame(index);
+    this.frame = index;
+    this.elapsed = index * this.frameDurationMs / 1000;
+    this.playing = true;
+    this.inspecting = true;
+    this.applyPose();
+    // Exact inspection: do not leave the shape a few pixels behind its target.
+    this.world.snapToTargetPose();
+    return true;
+  }
+
+  resume() {
+    if (!this.playing || !this.inspecting) return false;
+    if (this.frame > this.loopEndFrame) this.elapsed = 0;
+    this.inspecting = false;
+    this.applyPose();
+    return true;
+  }
+
+  /** Non-destructive loop trimming: the original 40 frames remain available. */
+  setLoopEndFrame(index) {
+    this.validateFrame(index);
+    if (index < 1) throw new RangeError('La boucle doit contenir au moins deux frames.');
+    this.loopEndFrame = index;
+    if (this.playing && !this.inspecting) {
+      if (this.elapsed * 1000 >= this.playbackDurationMs) this.elapsed = 0;
+      this.applyPose();
+    }
+    return true;
+  }
+
+  validateFrame(index) {
+    if (!Number.isInteger(index) || index < 0 || index >= this.frames.length) {
+      throw new RangeError('Numéro de frame invalide.');
+    }
+  }
+
   stop() {
     if (!this.playing) return false;
     this.playing = false;
+    this.inspecting = false;
     this.world.setTargetPose(null);
     return true;
   }
@@ -122,8 +180,8 @@ class TargetAnimationPlayer {
     if (!Number.isFinite(deltaSeconds) || deltaSeconds < 0) {
       throw new RangeError('Durée d’animation invalide.');
     }
-    if (!this.playing || this.world.paused || deltaSeconds === 0) return;
-    const duration = this.animation.durationMs / 1000;
+    if (!this.playing || this.inspecting || this.world.paused || deltaSeconds === 0) return;
+    const duration = this.playbackDurationMs / 1000;
     this.elapsed += deltaSeconds;
     if (this.elapsed >= duration && !this.loop) {
       this.stop();
@@ -134,13 +192,16 @@ class TargetAnimationPlayer {
   }
 
   applyPose() {
-    const position = this.elapsed * 1000 / this.animation.durationMs * this.frames.length;
-    this.frame = Math.floor(position) % this.frames.length;
-    const next = (this.frame + 1) % this.frames.length;
+    const position = this.elapsed * 1000 / this.frameDurationMs;
+    // Inspection may target a frame outside the selected playback window.
+    this.frame = Math.min(this.frames.length - 1, Math.floor(position));
+    const next = this.inspecting || (!this.loop && this.frame === this.loopEndFrame)
+      ? this.frame
+      : this.frame === this.loopEndFrame ? 0 : this.frame + 1;
     this.world.setTargetPose({
       from: this.frames[this.frame],
       to: this.frames[next],
-      blend: position - Math.floor(position),
+      blend: this.inspecting ? 0 : position - Math.floor(position),
     });
   }
 
@@ -148,9 +209,13 @@ class TargetAnimationPlayer {
     return Object.freeze({
       name: this.animation.name,
       playing: this.playing,
+      inspecting: this.inspecting,
       frame: this.frame,
       frameCount: this.frames.length,
-      progress: this.elapsed / (this.animation.durationMs / 1000),
+      frameDurationMs: this.frameDurationMs,
+      loopEndFrame: this.loopEndFrame,
+      playbackDurationMs: this.playbackDurationMs,
+      progress: this.elapsed / (this.playbackDurationMs / 1000),
       loop: this.loop,
     });
   }

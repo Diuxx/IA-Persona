@@ -126,6 +126,26 @@ class ParticleWorld {
   }
 
   /** A pose only changes the targets; it never replaces or recreates particles. */
+  /** Show one exact target pose for visual review; normal physics resumes on play. */
+  snapToTargetPose() {
+    if (!this.targetPose) return false;
+    const { from, to, blend } = this.targetPose;
+    for (let index = 0; index < this.particles.length; index += 1) {
+      const offset = index * 3;
+      const particle = this.particles[index];
+      particle.x = this.originX + from[offset] + (to[offset] - from[offset]) * blend;
+      particle.y = this.originY + from[offset + 1] + (to[offset + 1] - from[offset + 1]) * blend;
+      particle.vx = 0;
+      particle.vy = 0;
+    }
+    // Inspect the reference pose, not a residual hit/reveal or automatic blink.
+    this.mode = 'idle';
+    this.modeTime = 0;
+    this.colorMix = 0;
+    this.blinkStartedAt = -1;
+    return true;
+  }
+
   setTargetPose(pose) {
     if (pose !== null) {
       const length = this.particles.length * 3;
