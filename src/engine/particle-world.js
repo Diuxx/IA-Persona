@@ -128,6 +128,7 @@ class ParticleWorld {
     });
     this.sourceParticleCount = this.allParticles.length;
     this.dynamicPopulation = false;
+    this.extraSourceIndices = []; // Source of each pool identity past the static particles, in order.
     this.densityLimit = null; // null = exactly the visible population of each reference pose.
     this.visibleParticleCount = this.sourceParticleCount;
     this.particles = this.allParticles;
@@ -141,29 +142,46 @@ class ParticleWorld {
     );
   }
 
-  /** Expand once, not every frame. Extra body particles reuse a nearby source's material and roles. */
+  /**
+   * Grow the reusable pool to a clip's identities (once, not every frame).
+   * Clips share ONE pool: a clip's extra identities must begin with the extras
+   * already in the pool, so a smaller clip is a prefix of a larger one and keeps
+   * the same particle identities. Extras are clones of source particles; eye
+   * sources may be cloned too (the left clip shows more white pixels than the map).
+   */
   enableDynamicPopulation(animation) {
-    if (this.dynamicPopulation) {
-      if (this.allParticles.length !== animation.particleCount) {
-        throw new RangeError('Capacité du pool incompatible.');
-      }
-      return;
-    }
-    if (this.particles.length !== this.sourceParticleCount || !Array.isArray(animation.extraSources) ||
+    if (!Array.isArray(animation.extraSources) ||
         animation.extraSources.length !== animation.particleCount - this.sourceParticleCount ||
         animation.particleCount > 40000) {
       throw new RangeError('Définition du pool dynamique invalide.');
     }
     for (const sourceIndex of animation.extraSources) {
-      if (!Number.isInteger(sourceIndex) || sourceIndex < 0 || sourceIndex >= this.sourceParticleCount ||
-          this.allParticles[sourceIndex].eye) {
+      if (!Number.isInteger(sourceIndex) || sourceIndex < 0 || sourceIndex >= this.sourceParticleCount) {
         throw new RangeError('Source d’une particule supplémentaire invalide.');
       }
     }
-    for (const sourceIndex of animation.extraSources) {
+    if (!this.dynamicPopulation) {
+      if (this.particles.length !== this.sourceParticleCount) {
+        throw new RangeError('Définition du pool dynamique invalide.');
+      }
+      this.dynamicPopulation = true;
+      this.visibleParticleCount = 0;
+      this.extraSourceIndices = [];
+    }
+    const current = this.extraSourceIndices;
+    // The shorter of the two identity lists must be a prefix of the other one.
+    const shared = Math.min(current.length, animation.extraSources.length);
+    for (let i = 0; i < shared; i += 1) {
+      if (animation.extraSources[i] !== current[i]) {
+        throw new RangeError('Population incompatible avec les animations déjà chargées.');
+      }
+    }
+    if (animation.extraSources.length <= current.length) return;
+    for (const sourceIndex of animation.extraSources.slice(current.length)) {
       const source = this.allParticles[sourceIndex];
-      this.allParticles.push({ ...source, sourceIndex: this.allParticles.length,
+      this.allParticles.push({ ...source, x: source.homeX, y: source.homeY, sourceIndex: this.allParticles.length,
         vx: 0, vy: 0, phase: this.random() * Math.PI * 2, activity: 0 });
+      current.push(sourceIndex);
     }
     this.particles = this.allParticles;
     this.particleRank = this.allParticles.map((particle, index) => ({
@@ -171,8 +189,6 @@ class ParticleWorld {
     })).sort((a, b) => a.score - b.score || a.index - b.index);
     // Keep the original physical mesh: new points are attracted by their own spring.
     // The original mesh stays valid; dynamically inactive neighbors are ignored.
-    this.dynamicPopulation = true;
-    this.visibleParticleCount = 0;
   }
 
   /** Change the quality cap; dynamic animations keep the fixed-size reusable pool. */
@@ -238,7 +254,8 @@ class ParticleWorld {
   setTargetPose(pose) {
     if (pose !== null) {
       const length = this.particles.length * 3;
-      if (!(pose.from instanceof Uint8Array) || !(pose.to instanceof Uint8Array) ||
+      // Idle poses are Uint8Array; the left clip uses Int16Array (coordinates leave 0..255).
+      if (!ArrayBuffer.isView(pose.from) || !ArrayBuffer.isView(pose.to) ||
           pose.from.length !== length || pose.to.length !== length ||
           !Number.isFinite(pose.blend) || pose.blend < 0 || pose.blend > 1) {
         throw new TypeError('Disposition cible incompatible avec les particules.');

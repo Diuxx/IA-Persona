@@ -43,7 +43,9 @@ function blendDrives(previous, next, fraction) {
 }
 
 class BehaviorController {
-  constructor(world, { transitionDuration = TRANSITION_DURATION, animationPlayer = null } = {}) {
+  constructor(world, {
+    transitionDuration = TRANSITION_DURATION, animationPlayer = null, animationPlayers = [],
+  } = {}) {
     if (!world || typeof world.setBehaviorDrive !== 'function' || typeof world.applyField !== 'function') {
       throw new TypeError('Le contrôleur nécessite un moteur de particules compatible.');
     }
@@ -51,7 +53,13 @@ class BehaviorController {
       throw new RangeError('Durée de transition invalide.');
     }
     this.world = world;
-    this.animationPlayer = animationPlayer;
+    // Clips are selected by name; the active one receives the playback and inspection commands.
+    this.clips = new Map();
+    for (const player of [animationPlayer, ...animationPlayers]) {
+      if (player) this.registerClip(player);
+    }
+    this.defaultPlayer = animationPlayer ?? this.clips.values().next().value ?? null;
+    this.animationPlayer = this.defaultPlayer;
     this.state = 'idle';
     this.energy = INITIAL_ENERGY;
     this.voiceLevel = 0;
@@ -95,6 +103,16 @@ class BehaviorController {
       : target;
     this.world.setBehaviorDrive(this.drive);
     this.animationPlayer?.advance(deltaSeconds);
+    this.handOverIfFinished();
+  }
+
+  /** A one-shot clip that declares a successor hands over as soon as it completes. */
+  handOverIfFinished() {
+    const player = this.animationPlayer;
+    if (!player || !player.completed || player.playing || !player.animation.next) return;
+    const successor = this.clips.get(player.animation.next);
+    if (!successor) throw new RangeError(`Animation suivante inconnue : ${player.animation.next}`);
+    this.controlAnimation({ type: 'animation', name: successor.animation.name });
   }
 
   trigger(effect, options = {}) {
@@ -150,6 +168,12 @@ class BehaviorController {
     }
   }
 
+  registerClip(player) {
+    const name = player.animation.name;
+    if (this.clips.has(name)) throw new RangeError(`Animation déjà enregistrée : ${name}`);
+    this.clips.set(name, player);
+  }
+
   /** Explicit animation allowlist; external actors cannot load arbitrary assets. */
   controlAnimation(command) {
     if (!this.animationPlayer) throw new RangeError('Aucune animation cible disponible.');
@@ -166,15 +190,20 @@ class BehaviorController {
     if (command.action !== undefined && command.action !== 'play') {
       throw new RangeError('Action d’animation inconnue.');
     }
-    if (command.name !== this.animationPlayer.animation.name) {
-      throw new RangeError('Animation cible inconnue.');
-    }
+    const player = this.clips.get(command.name);
+    if (!player) throw new RangeError('Animation cible inconnue.');
     if (this.state !== 'idle') this.setState('idle');
-    return this.animationPlayer.play({ loop: command.loop ?? true });
+    if (player !== this.animationPlayer) {
+      // Switching clips must not release the pose first: the new clip takes over directly.
+      this.animationPlayer.detach();
+      this.animationPlayer = player;
+    }
+    return player.play({ loop: command.loop });
   }
 
   reset() {
-    this.animationPlayer?.stop();
+    for (const player of this.clips.values()) player.stop();
+    this.animationPlayer = this.defaultPlayer;
     this.world.reset();
     this.state = 'idle';
     this.energy = INITIAL_ENERGY;

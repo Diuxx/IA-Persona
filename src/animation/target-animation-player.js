@@ -1,10 +1,20 @@
 /**
  * Particle animation driven by reference silhouettes, not sprite rendering.
- * Each pose contains one target (x, y, shade) per existing particle.
+ * Each pose contains one target (x, y, shade) per particle identity.
  * Correspondence is computed OFFLINE, so particle IDs and roles never change.
+ *
+ * Two clip kinds share one player:
+ * - 'loop' (idle): plays forever, returns from the last frame to the first.
+ * - 'one-shot' (left): plays once with ease-in-out timing, then HOLDS its final
+ *   pose. It never loops back to frame 1.
  */
 const MAX_ANIMATION_FRAMES = 160;
 const MAX_COMPRESSED_BYTES = 5_000_000;
+const MAX_IDENTITIES = 40000;
+const ANIMATION_KINDS = ['loop', 'one-shot'];
+// Dynamic encodings let a clip use fewer identities than the shared pool.
+const DYNAMIC_ENCODINGS = ['gzip-particle-major-rgb3-dynamic', 'gzip-particle-major-xy16-rgb'];
+const SIGNED_COORDINATE_ENCODING = 'gzip-particle-major-xy16-rgb';
 
 function adler32(bytes) {
   let a = 1;
@@ -74,12 +84,13 @@ function validateAnimation(animation, world) {
       animation.frameCount > MAX_ANIMATION_FRAMES ||
       (animation.encoding === 'gzip-particle-major-rgb3'
         ? animation.particleCount !== world.particles.length
-        : animation.particleCount < world.sourceParticleCount || animation.particleCount > 40000) ||
+        : animation.particleCount < world.sourceParticleCount || animation.particleCount > MAX_IDENTITIES) ||
       !Number.isFinite(animation.durationMs) || animation.durationMs <= 0 || animation.durationMs > 60000 ||
-      !['gzip-particle-major-rgb3', 'gzip-particle-major-rgb3-dynamic'].includes(animation.encoding)) {
+      !['gzip-particle-major-rgb3', ...DYNAMIC_ENCODINGS].includes(animation.encoding) ||
+      !ANIMATION_KINDS.includes(animation.kind ?? 'loop')) {
     throw new TypeError('Animation cible incompatible avec la simulation.');
   }
-  if (animation.encoding === 'gzip-particle-major-rgb3-dynamic') {
+  if (DYNAMIC_ENCODINGS.includes(animation.encoding)) {
     if (!Array.isArray(animation.extraSources) ||
         animation.extraSources.length !== animation.particleCount - world.sourceParticleCount ||
         !Array.isArray(animation.frameActiveCounts) ||
@@ -94,25 +105,57 @@ function validateAnimation(animation, world) {
   }
 }
 
+/** Eye flag of an identity, read without mutating the world (identities may not exist yet). */
+function identityIsEye(animation, world, particleIndex) {
+  if (particleIndex < world.sourceParticleCount) return Boolean(world.allParticles[particleIndex].eye);
+  const sourceIndex = animation.extraSources[particleIndex - world.sourceParticleCount];
+  if (!Number.isInteger(sourceIndex) || sourceIndex < 0 || sourceIndex >= world.sourceParticleCount) {
+    throw new RangeError('Source d’une particule supplémentaire invalide.');
+  }
+  return Boolean(world.allParticles[sourceIndex].eye);
+}
+
 async function decodeAnimation(animation, world) {
   validateAnimation(animation, world);
   const count = animation.particleCount;
-  const expectedLength = count * animation.frameCount * 3;
+  const frameCount = animation.frameCount;
+  const signed = animation.encoding === SIGNED_COORDINATE_ENCODING;
+  const dynamic = animation.encoding !== 'gzip-particle-major-rgb3';
+  const bytesPerTarget = signed ? 5 : 3;
+  const expectedLength = count * frameCount * bytesPerTarget;
   if (expectedLength > 20_000_000) throw new RangeError('Animation trop volumineuse.');
   const raw = await inflateGzip(animation.payload, expectedLength);
   if (raw.length !== expectedLength) throw new Error('Nombre de cibles incohérent.');
-  const frames = Array.from({ length: animation.frameCount }, () => new Uint8Array(count * 3));
-  const dynamic = animation.encoding === 'gzip-particle-major-rgb3-dynamic';
-  const counts = new Uint32Array(frames.length);
+
+  // Everything is validated before the shared pool may grow: a rejected clip leaves the world intact.
+  const FrameArray = signed ? Int16Array : Uint8Array;
+  const frames = Array.from({ length: frameCount }, () => new FrameArray(count * 3));
+  const view = new DataView(raw.buffer, raw.byteOffset, raw.byteLength);
+  const counts = new Uint32Array(frameCount);
   for (let particleIndex = 0; particleIndex < count; particleIndex += 1) {
-    for (let frameIndex = 0; frameIndex < frames.length; frameIndex += 1) {
-      const sourceOffset = (particleIndex * frames.length + frameIndex) * 3;
-      const x = raw[sourceOffset];
-      const y = raw[sourceOffset + 1];
-      const shade = raw[sourceOffset + 2];
-      const expectedEye = particleIndex < world.sourceParticleCount && world.particles[particleIndex].eye;
-      if (x >= animation.width || y >= animation.height || shade > 3 ||
-          (!dynamic && shade === 0) || (shade !== 0 && Boolean(expectedEye) !== (shade === 3))) {
+    const expectedEye = identityIsEye(animation, world, particleIndex);
+    for (let frameIndex = 0; frameIndex < frameCount; frameIndex += 1) {
+      const sourceOffset = (particleIndex * frameCount + frameIndex) * bytesPerTarget;
+      let x;
+      let y;
+      let shade;
+      if (signed) {
+        x = view.getInt16(sourceOffset, true);
+        y = view.getInt16(sourceOffset + 2, true);
+        shade = raw[sourceOffset + 4];
+        if (x < -world.originX || x >= world.size - world.originX ||
+            y < -world.originY || y >= world.size - world.originY) {
+          throw new Error(`Position hors scène : frame ${frameIndex}, particule ${particleIndex}.`);
+        }
+      } else {
+        x = raw[sourceOffset];
+        y = raw[sourceOffset + 1];
+        shade = raw[sourceOffset + 2];
+        if (x >= animation.width || y >= animation.height) {
+          throw new Error(`Position ou couleur invalide : frame ${frameIndex}, particule ${particleIndex}.`);
+        }
+      }
+      if (shade > 3 || (!dynamic && shade === 0) || (shade !== 0 && expectedEye !== (shade === 3))) {
         throw new Error(`Position ou couleur invalide : frame ${frameIndex}, particule ${particleIndex}.`);
       }
       const targetOffset = particleIndex * 3;
@@ -123,40 +166,70 @@ async function decodeAnimation(animation, world) {
     }
   }
   if (dynamic) {
-    for (let frameIndex = 0; frameIndex < frames.length; frameIndex += 1) {
+    // Pixel uniqueness is checked in the coordinate space of the clip.
+    const width = signed ? world.size : animation.width;
+    const height = signed ? world.size : animation.height;
+    const offsetX = signed ? world.originX : 0;
+    const offsetY = signed ? world.originY : 0;
+    const occupied = new Uint8Array(width * height);
+    for (let frameIndex = 0; frameIndex < frameCount; frameIndex += 1) {
       if (counts[frameIndex] !== animation.frameActiveCounts[frameIndex]) {
         throw new Error(`Population incohérente : frame ${frameIndex + 1}.`);
       }
-      const occupied = new Uint8Array(animation.width * animation.height);
+      occupied.fill(0);
       const frame = frames[frameIndex];
       for (let i = 0; i < count; i += 1) {
         if (!frame[i * 3 + 2]) continue;
-        const pixel = frame[i * 3 + 1] * animation.width + frame[i * 3];
+        const pixel = (frame[i * 3 + 1] + offsetY) * width + frame[i * 3] + offsetX;
         if (occupied[pixel]) throw new Error(`Pixels dupliqués : frame ${frameIndex + 1}.`);
         occupied[pixel] = 1;
       }
     }
     world.enableDynamicPopulation(animation);
   }
-  return frames;
+  if (world.particles.length === count) return frames;
+  // Identities beyond this clip exist in the shared pool but stay inactive (shade 0).
+  return frames.map(frame => {
+    const pooled = new FrameArray(world.particles.length * 3);
+    pooled.set(frame);
+    return pooled;
+  });
+}
+
+/** Ease-in-out timing for one-shot clips: zero speed at both ends, no abrupt stop. */
+function smoothstep(value) {
+  const progress = Math.max(0, Math.min(1, value));
+  return progress * progress * (3 - 2 * progress);
+}
+
+/** Exact inverse of smoothstep, so an inspected frame resumes at the same pose. */
+function inverseSmoothstep(value) {
+  const progress = Math.max(0, Math.min(1, value));
+  return 0.5 - Math.sin(Math.asin(1 - 2 * progress) / 3);
 }
 
 class TargetAnimationPlayer {
   constructor(world, animation, frames) {
     this.world = world;
     this.animation = animation;
+    this.kind = animation.kind ?? 'loop';
     this.fullFrames = frames;
     this.frames = frames;
+    // Density cap currently applied to this.frames; re-applied lazily when the shared cap changes.
+    this.qualityLimit = null;
     // A fixed subset avoids quality-cap flicker: identities never swap during playback.
     this.qualityOrder = null;
     if (world.dynamicPopulation) {
+      // Quality works on this clip's own identities, not on the larger shared pool.
+      const identityCount = animation.particleCount;
       const occurrence = new Uint8Array(world.particles.length);
       for (const frame of frames) {
-        for (let index = 0; index < occurrence.length; index += 1) {
+        for (let index = 0; index < identityCount; index += 1) {
           if (frame[index * 3 + 2] !== 0) occurrence[index] += 1;
         }
       }
       const ranked = world.particleRank.map(item => item.index)
+        .filter(index => index < identityCount)
         .sort((a, b) => occurrence[b] - occurrence[a] || a - b);
       this.qualityOrder = {
         eye: ranked.filter(index => world.particles[index].eye),
@@ -167,9 +240,12 @@ class TargetAnimationPlayer {
     this.frame = 0;
     this.loopEndFrame = frames.length - 1;
     this.speed = 1;
-    this.loop = true;
+    this.loop = this.kind === 'loop';
     this.playing = false;
     this.inspecting = false;
+    // A one-shot clip that reached its end keeps its final pose: held, not playing.
+    this.held = false;
+    this.completed = false;
   }
 
   static async create(world, animation) {
@@ -178,6 +254,21 @@ class TargetAnimationPlayer {
     }
     const frames = await decodeAnimation(animation, world);
     return new TargetAnimationPlayer(world, animation, frames);
+  }
+
+  /**
+   * Decode several clips into one shared pool. The largest clip goes first so the pool
+   * grows once; smaller clips are prefixes and pad to it. Returns players in input order.
+   */
+  static async createClips(world, animations) {
+    const names = new Set(animations.map(animation => animation.name));
+    if (names.size !== animations.length) throw new RangeError('Noms d’animation en double.');
+    const byName = new Map();
+    const largestFirst = [...animations].sort((a, b) => b.particleCount - a.particleCount);
+    for (const animation of largestFirst) {
+      byName.set(animation.name, await TargetAnimationPlayer.create(world, animation));
+    }
+    return animations.map(animation => byName.get(animation.name));
   }
 
   get frameDurationMs() {
@@ -200,12 +291,18 @@ class TargetAnimationPlayer {
     return true;
   }
 
-  play({ loop = true } = {}) {
-    if (typeof loop !== 'boolean') throw new TypeError('La boucle doit être un booléen.');
-    this.loop = loop;
+  play({ loop } = {}) {
+    if (loop !== undefined && typeof loop !== 'boolean') throw new TypeError('La boucle doit être un booléen.');
+    const shouldLoop = loop ?? this.kind === 'loop';
+    if (this.kind === 'one-shot' && shouldLoop) {
+      throw new RangeError('Cette animation ne se répète pas : elle se termine sur sa pose finale.');
+    }
+    this.loop = shouldLoop;
     this.elapsed = 0;
     this.inspecting = false;
     this.playing = true;
+    this.held = false;
+    this.completed = false;
     this.applyPose();
     return true;
   }
@@ -221,8 +318,9 @@ class TargetAnimationPlayer {
   inspectFrame(index) {
     this.validateFrame(index);
     this.frame = index;
-    this.elapsed = index * this.frameDurationMs / 1000;
+    this.elapsed = this.timeForFrame(index);
     this.playing = true;
+    this.held = false;
     this.inspecting = true;
     this.applyPose();
     // Exact inspection: do not leave the shape a few pixels behind its target.
@@ -238,37 +336,32 @@ class TargetAnimationPlayer {
     return true;
   }
 
-  /** Change the density cap without changing the persistent pool or the 43 reference poses. */
+  /** Change the density cap without changing the persistent pool or the reference poses. */
   setParticleCount(count) {
+    if (!this.world.dynamicPopulation) return this.setLegacyParticleCount(count);
     const changed = this.world.setParticleCount(count);
     if (!changed) return false;
-    if (this.world.dynamicPopulation) {
-      const selected = new Uint8Array(this.world.particles.length);
-      if (count !== 'auto') {
-        // Keep an eye silhouette even on the smallest quality setting.
-        const eyeBudget = Math.max(1, Math.min(this.qualityOrder.eye.length,
-          Math.round(count * this.qualityOrder.eye.length / selected.length)));
-        for (let i = 0; i < eyeBudget; i += 1) selected[this.qualityOrder.eye[i]] = 1;
-        for (let i = 0; i < count - eyeBudget; i += 1) selected[this.qualityOrder.body[i]] = 1;
-      }
-      this.frames = this.fullFrames.map(sourceFrame => {
-        if (count === 'auto') return sourceFrame;
-        const filtered = sourceFrame.slice();
-        for (let index = 0; index < selected.length; index += 1) {
-          if (!selected[index]) filtered[index * 3 + 2] = 0;
-        }
-        return filtered;
-      });
-    } else {
-      this.frames = this.fullFrames.map(sourceFrame => {
-        const compact = new Uint8Array(count * 3);
-        for (let index = 0; index < count; index += 1) {
-          const sourceOffset = this.world.particles[index].sourceIndex * 3;
-          compact.set(sourceFrame.subarray(sourceOffset, sourceOffset + 3), index * 3);
-        }
-        return compact;
-      });
+    this.ensureQuality();
+    if (this.inspecting) {
+      this.applyPose();
+      this.world.snapToTargetPose();
+    } else if (this.playing || this.held) {
+      this.applyPose();
     }
+    return true;
+  }
+
+  setLegacyParticleCount(count) {
+    const changed = this.world.setParticleCount(count);
+    if (!changed) return false;
+    this.frames = this.fullFrames.map(sourceFrame => {
+      const compact = new Uint8Array(count * 3);
+      for (let index = 0; index < count; index += 1) {
+        const sourceOffset = this.world.particles[index].sourceIndex * 3;
+        compact.set(sourceFrame.subarray(sourceOffset, sourceOffset + 3), index * 3);
+      }
+      return compact;
+    });
     if (this.playing) {
       this.applyPose();
       if (this.inspecting) this.world.snapToTargetPose();
@@ -276,8 +369,34 @@ class TargetAnimationPlayer {
     return true;
   }
 
-  /** Non-destructive loop trimming: all 43 original frames remain available. */
+  /** Apply the shared cap to this clip's own identities, keeping the same selected IDs in every frame. */
+  applyQuality(limit) {
+    if (limit === null) {
+      this.frames = this.fullFrames;
+      return;
+    }
+    const identityCount = this.animation.particleCount;
+    const count = Math.min(limit, identityCount);
+    const selected = new Uint8Array(this.world.particles.length);
+    // Keep an eye silhouette even on the smallest quality setting.
+    const eyeBudget = Math.max(1, Math.min(this.qualityOrder.eye.length,
+      Math.round(count * this.qualityOrder.eye.length / identityCount)));
+    for (let i = 0; i < eyeBudget; i += 1) selected[this.qualityOrder.eye[i]] = 1;
+    for (let i = 0; i < count - eyeBudget; i += 1) selected[this.qualityOrder.body[i]] = 1;
+    this.frames = this.fullFrames.map(sourceFrame => {
+      const filtered = sourceFrame.slice();
+      for (let index = 0; index < selected.length; index += 1) {
+        if (!selected[index]) filtered[index * 3 + 2] = 0;
+      }
+      return filtered;
+    });
+  }
+
+  /** Non-destructive loop trimming: all reference frames remain available. */
   setLoopEndFrame(index) {
+    if (this.kind === 'one-shot') {
+      throw new RangeError('La fin de boucle ne s’applique pas à une animation non bouclée.');
+    }
     this.validateFrame(index);
     if (index < 1) throw new RangeError('La boucle doit contenir au moins deux frames.');
     this.loopEndFrame = index;
@@ -294,12 +413,24 @@ class TargetAnimationPlayer {
     }
   }
 
+  /** Stop releases the pose: the particles return to the physics of the resting body. */
   stop() {
-    if (!this.playing) return false;
+    if (!this.playing && !this.held) return false;
     this.playing = false;
+    this.held = false;
     this.inspecting = false;
     this.world.setTargetPose(null);
     return true;
+  }
+
+  /**
+   * Leave this clip without touching the shared world pose: another clip is about to
+   * set its own pose, so releasing here would make the particles fall back to rest.
+   */
+  detach() {
+    this.playing = false;
+    this.held = false;
+    this.inspecting = false;
   }
 
   advance(deltaSeconds) {
@@ -309,6 +440,15 @@ class TargetAnimationPlayer {
     if (!this.playing || this.inspecting || this.world.paused || deltaSeconds === 0) return;
     const duration = this.sourcePlaybackDurationMs / 1000;
     this.elapsed += deltaSeconds * this.speed;
+    if (this.kind === 'one-shot') {
+      if (this.elapsed >= duration) {
+        this.elapsed = duration;
+        this.finish();
+      } else {
+        this.applyPose();
+      }
+      return;
+    }
     if (this.elapsed >= duration && !this.loop) {
       this.stop();
       return;
@@ -317,9 +457,32 @@ class TargetAnimationPlayer {
     this.applyPose();
   }
 
+  /** End of a one-shot clip: the final reference pose is kept until a new command. */
+  finish() {
+    this.playing = false;
+    this.held = true;
+    this.completed = true;
+    this.applyPose();
+  }
+
+  /** Time (seconds) at which a reference frame is shown; inverse of positionAt. */
+  timeForFrame(index) {
+    if (this.kind !== 'one-shot') return index * this.frameDurationMs / 1000;
+    const last = this.frames.length - 1;
+    return inverseSmoothstep(index / last) * this.sourcePlaybackDurationMs / 1000;
+  }
+
+  /** Fractional frame position for an elapsed time. */
+  positionAt(elapsedSeconds) {
+    if (this.kind !== 'one-shot') return elapsedSeconds * 1000 / this.frameDurationMs;
+    const progress = elapsedSeconds / (this.sourcePlaybackDurationMs / 1000);
+    return (this.frames.length - 1) * smoothstep(progress);
+  }
+
   applyPose() {
-    const position = this.elapsed * 1000 / this.frameDurationMs;
-    // Inspection may target a frame outside the selected playback window.
+    this.ensureQuality();
+    // Inspection shows exactly one reference frame; playback derives it from time.
+    const position = this.inspecting ? this.frame : this.positionAt(this.elapsed);
     this.frame = Math.min(this.frames.length - 1, Math.floor(position));
     const next = this.inspecting || (!this.loop && this.frame === this.loopEndFrame)
       ? this.frame
@@ -331,11 +494,22 @@ class TargetAnimationPlayer {
     });
   }
 
+  ensureQuality() {
+    if (!this.world.dynamicPopulation) return;
+    const limit = this.world.densityLimit;
+    if (limit === this.qualityLimit) return;
+    this.applyQuality(limit);
+    this.qualityLimit = limit;
+  }
+
   getSnapshot() {
     return Object.freeze({
       name: this.animation.name,
+      kind: this.kind,
       playing: this.playing,
       inspecting: this.inspecting,
+      held: this.held,
+      completed: this.completed,
       frame: this.frame,
       frameCount: this.frames.length,
       visibleCount: this.world.dynamicPopulation ? this.world.visibleParticleCount : this.world.particles.length,

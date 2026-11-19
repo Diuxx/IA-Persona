@@ -2,11 +2,13 @@
 const canvas = document.querySelector('#mascot');
 const context = canvas.getContext('2d', { alpha: true });
 const world = new ParticleWorld(PERSONA_PIXEL_MAP, { anatomy: PERSONA_ANATOMY });
-let targetPlayer;
 let controller;
+// The clip currently selected by the controller (idle or left) drives the inspector.
+const activeClip = () => controller.animationPlayer;
 async function initializePersona() {
-  targetPlayer = await TargetAnimationPlayer.create(world, PERSONA_IDLE_TARGETS);
-  controller = new BehaviorController(world, { animationPlayer: targetPlayer });
+  const [idlePlayer, leftPlayer, rightPlayer] = await TargetAnimationPlayer.createClips(
+    world, [PERSONA_IDLE_TARGETS, PERSONA_LEFT_TARGETS, PERSONA_RIGHT_TARGETS]);
+  controller = new BehaviorController(world, { animationPlayer: idlePlayer, animationPlayers: [leftPlayer, rightPlayer] });
 const frame = context.createImageData(world.size, world.size);
 const pixelStabilizer = new PixelStabilizer(frame.data.length, world.size);
 const status = document.querySelector('#status');
@@ -40,10 +42,7 @@ const idleLoopEndValue = document.querySelector('#idle-loop-end-value');
 const idleLoopDuration = document.querySelector('#idle-loop-duration');
 const idleFreezeButton = document.querySelector('#idle-freeze');
 const idleResumeButton = document.querySelector('#idle-resume');
-// The inspector follows the loaded asset, not a hardcoded frame count.
-const idleFrameCount = targetPlayer.frames.length;
-idleFrameControl.max = String(idleFrameCount);
-idleLoopEndControl.max = String(idleFrameCount);
+const playLeftButton = document.querySelector('#play-left');
 
 canvas.width = world.size;
 canvas.height = world.size;
@@ -93,12 +92,20 @@ const BEHAVIOR_LABELS = Object.freeze({
   speaking: 'Speaking · pulsation vocale',
 });
 
+const CLIP_LABELS = Object.freeze({
+  idle: 'Idle',
+  left: 'Left',
+  right: 'Right',
+});
+
 function updateStatus() {
-  status.textContent = targetPlayer.inspecting ? 'Idle · frame figée pour contrôle' :
+  const clip = CLIP_LABELS[activeClip().animation.name] ?? activeClip().animation.name;
+  status.textContent = activeClip().inspecting ? `${clip} · frame figée pour contrôle` :
     world.paused ? 'En pause' :
     world.mode === 'reveal' ? 'Révélation · couleurs en mouvement' :
     world.mode === 'explode' ? 'Explosion · retour élastique' :
-    targetPlayer.playing ? 'Idle · animation reconstruite par les pixels' :
+    activeClip().held ? `${clip} · pose finale maintenue` :
+    activeClip().playing ? `${clip} · animation reconstruite par les pixels` :
     BEHAVIOR_LABELS[controller.state];
 }
 
@@ -110,22 +117,31 @@ function syncApplicationControls() {
 }
 
 function syncAnimationControls() {
-  const animation = targetPlayer.getSnapshot();
+  const animation = activeClip().getSnapshot();
   metrics.updateParticleCount(animation.visibleCount);
   particleDensityControl.value = animation.densityLimit === null ? 'auto' : String(animation.densityLimit);
+  const oneShot = animation.kind === 'one-shot';
+  // The inspector follows the active clip: 43 frames for idle, 34 for left.
+  idleFrameControl.max = String(animation.frameCount);
+  idleLoopEndControl.max = String(animation.frameCount);
   idleFrameControl.value = String(animation.frame + 1);
   idleSpeedControl.value = String(animation.speed);
   idleSpeedValue.textContent = `${animation.speed.toFixed(2).replace(/\.?0+$/, '')}×`;
   idleFrameValue.textContent = `${animation.frame + 1} / ${animation.frameCount}`;
   idleLoopEndControl.value = String(animation.loopEndFrame + 1);
   idleLoopEndValue.textContent = `${animation.loopEndFrame + 1} / ${animation.frameCount}`;
-  idleLoopDuration.textContent = `Boucle de ${(animation.playbackDurationMs / 1000).toFixed(2).replace('.', ',')} s · ${(animation.frameDurationMs / animation.speed).toFixed(1).replace('.', ',')} ms/frame`;
+  idleLoopEndControl.disabled = oneShot;
+  idleLoopDuration.textContent = oneShot
+    ? `Lecture unique de ${(animation.playbackDurationMs / 1000).toFixed(2).replace('.', ',')} s, puis pose finale maintenue`
+    : `Boucle de ${(animation.playbackDurationMs / 1000).toFixed(2).replace('.', ',')} s · ${(animation.frameDurationMs / animation.speed).toFixed(1).replace('.', ',')} ms/frame`;
   animationStatus.textContent = animation.inspecting
     ? `Frame ${animation.frame + 1} figée · prête pour inspection`
-    : animation.playing
-      ? `Lecture : frame ${animation.frame + 1}/${animation.loopEndFrame + 1}`
-      : 'Animation arrêtée · physique libre';
-  stopIdleButton.disabled = !animation.playing;
+    : animation.held
+      ? `Pose finale ${animation.frame + 1}/${animation.frameCount} maintenue`
+      : animation.playing
+        ? `Lecture : frame ${animation.frame + 1}/${animation.frameCount}`
+        : 'Animation arrêtée · physique libre';
+  stopIdleButton.disabled = !animation.playing && !animation.held;
   idleFreezeButton.disabled = !animation.playing || animation.inspecting;
   idleResumeButton.disabled = !animation.inspecting;
 }
@@ -144,7 +160,7 @@ initializePersonaTabs();
 function render(elapsedSeconds = FIXED_STEP) {
   world.writePixels(frame.data, frameOptions);
   pixelStabilizer.apply(frame.data, elapsedSeconds,
-    antiFlickerControl.checked && targetPlayer.playing && !targetPlayer.inspecting && !world.paused &&
+    antiFlickerControl.checked && activeClip().playing && !activeClip().inspecting && !world.paused &&
     world.mode === 'idle' && !frameOptions.showAnatomy);
   context.putImageData(frame, 0, 0);
   frameDirty = false;
@@ -164,7 +180,7 @@ function animate(timestamp) {
 
   const simulationStart = performance.now();
   let iterations = 0;
-  if (world.paused || targetPlayer.inspecting) {
+  if (world.paused || activeClip().inspecting) {
     accumulator = 0;
   } else {
     accumulator += dt;
@@ -213,6 +229,16 @@ playIdleButton.addEventListener('click', () => {
   frameDirty = true;
   syncApplicationControls();
 });
+playLeftButton.addEventListener('click', () => {
+  controller.dispatch({ type: 'animation', name: 'left' });
+  frameDirty = true;
+  syncApplicationControls();
+});
+document.querySelector('#play-right').addEventListener('click', () => {
+  controller.dispatch({ type: 'animation', name: 'right' });
+  frameDirty = true;
+  syncApplicationControls();
+});
 stopIdleButton.addEventListener('click', () => {
   controller.dispatch({ type: 'animation', action: 'stop' });
   frameDirty = true;
@@ -221,10 +247,10 @@ stopIdleButton.addEventListener('click', () => {
 
 idleFrameControl.addEventListener('input', () => inspectFrame(Number(idleFrameControl.value) - 1));
 document.querySelector('#idle-prev').addEventListener('click', () => {
-  inspectFrame(Math.max(0, targetPlayer.frame - 1));
+  inspectFrame(Math.max(0, activeClip().frame - 1));
 });
 document.querySelector('#idle-next').addEventListener('click', () => {
-  inspectFrame(Math.min(targetPlayer.frames.length - 1, targetPlayer.frame + 1));
+  inspectFrame(Math.min(activeClip().frames.length - 1, activeClip().frame + 1));
 });
 idleFreezeButton.addEventListener('click', () => {
   controller.dispatch({ type: 'animation', action: 'pause' });
@@ -245,7 +271,7 @@ idleSpeedControl.addEventListener('input', () => {
 antiFlickerControl.addEventListener('change', () => {
   pixelStabilizer.reset();
   frameDirty = true;
-  if (targetPlayer.inspecting || world.paused) render();
+  if (activeClip().inspecting || world.paused) render();
 });
 
 particleDensityControl.addEventListener('change', () => {
@@ -253,7 +279,7 @@ particleDensityControl.addEventListener('change', () => {
   pixelStabilizer.reset();
   frameDirty = true;
   syncApplicationControls();
-  if (targetPlayer.inspecting || world.paused) render();
+  if (activeClip().inspecting || world.paused) render();
 });
 idleLoopEndControl.addEventListener('input', () => {
   controller.dispatch({ type: 'animation', action: 'loop-end', frame: Number(idleLoopEndControl.value) - 1 });
