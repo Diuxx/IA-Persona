@@ -3,6 +3,9 @@
  * Sans Canvas, sans image chargée et sans dépendance externe : testable dans Node.js.
  */
 const PARTICLE_STAGE_SIZE = 400;
+const localAssignAnatomy = typeof module !== 'undefined' && module.exports
+  ? require('./anatomy.js').assignAnatomy
+  : window.assignAnatomy;
 const LocalCohesionField = typeof module !== 'undefined' && module.exports
   ? require('./cohesion-field.js').CohesionField
   : window.CohesionField;
@@ -63,7 +66,7 @@ function decodePixelMap(map) {
 }
 
 class ParticleWorld {
-  constructor(map, { size = PARTICLE_STAGE_SIZE, random, seed } = {}) {
+  constructor(map, { size = PARTICLE_STAGE_SIZE, random, seed, anatomy } = {}) {
     if (!map || !Number.isInteger(size) || size < Math.max(map.width, map.height)) {
       throw new RangeError('Zone de simulation trop petite.');
     }
@@ -75,6 +78,7 @@ class ParticleWorld {
     }
 
     const decoded = decodePixelMap(map);
+    this.anatomy = anatomy ? localAssignAnatomy(decoded.pixels, anatomy, map.width, map.height) : null;
     this.size = size;
     this.map = map;
     this.random = seed === undefined ? (random ?? Math.random) : createSeededRandom(seed);
@@ -97,12 +101,12 @@ class ParticleWorld {
     this.colorMix = 0;
     this.blinkStartedAt = -1;
     this.nextBlinkAt = 3.8 + this.random() * 3.7;
-    this.particles = decoded.pixels.map(({ x, y, color, eye }) => {
+    this.particles = decoded.pixels.map(({ x, y, color, eye, region, profile }) => {
       const homeX = x + this.originX;
       const homeY = y + this.originY;
       return {
         homeX, homeY, x: homeX, y: homeY, vx: 0, vy: 0,
-        color, eye, phase: this.random() * Math.PI * 2,
+        color, eye, region, profile, phase: this.random() * Math.PI * 2,
       };
     });
     this.cohesionField = new LocalCohesionField(
@@ -175,7 +179,7 @@ class ParticleWorld {
       const dx = particle.x - originX;
       const dy = particle.y - originY;
       const angle = Math.atan2(dy, dx) + (this.random() - 0.5) * 0.9;
-      const force = (140 + this.random() * 160) * intensity;
+      const force = (140 + this.random() * 160) * intensity * (particle.profile?.impact ?? 1);
       particle.vx += Math.cos(angle) * force;
       particle.vy += Math.sin(angle) * force;
     }
@@ -190,7 +194,7 @@ class ParticleWorld {
     const center = this.size / 2;
     for (const particle of this.particles) {
       const angle = this.random() * Math.PI * 2;
-      const radius = (55 + this.random() * 130) * this.dispersion;
+      const radius = (55 + this.random() * 130) * this.dispersion * (particle.profile?.impact ?? 1);
       particle.x = center + Math.cos(angle) * radius;
       particle.y = center + Math.sin(angle) * radius;
       particle.vx = Math.cos(angle + Math.PI / 2) * 18;
@@ -248,18 +252,28 @@ class ParticleWorld {
     const breathe = Math.sin(this.clock * 1.35) * 0.014 * organic;
     const centerX = this.originX + this.map.width / 2;
     const centerY = this.originY + this.map.height / 2;
-    const friction = Math.exp(-this.damping * dt);
+    const baseFriction = Math.exp(-this.damping * dt);
 
     this.cohesionField.apply(this.particles, this.cohesion * this.getRecoveryFactor(), dt);
     for (const particle of this.particles) {
-      // Champ de mouvement partagé : les voisins se déplacent avec la même matière.
-      const waveX = Math.sin(this.clock * 1.12 + particle.homeY * 0.028) * 1.25 * organic;
-      const waveY = Math.sin(this.clock * 0.95 + particle.homeX * 0.035) * 0.70 * organic;
+      const profile = particle.profile;
+      const wave = profile?.wave ?? 1;
+      const breath = profile?.breath ?? 1;
+      const regionFloat = profile?.float ?? 0;
+      // Tous les pixels d'une zone partagent le même mouvement : l'anatomie
+      // garde une silhouette cohérente, même quand sa matière reste déformable.
+      const groupPhase = particle.region ?? 0;
+      const floatX = Math.sin(this.clock * 1.37 + groupPhase * 0.67) * regionFloat * organic * 0.55;
+      const floatY = Math.sin(this.clock * 1.83 + groupPhase * 0.45) * regionFloat * organic * 0.8;
+      const waveX = Math.sin(this.clock * 1.12 + particle.homeY * 0.028) * 1.25 * organic * wave;
+      const waveY = Math.sin(this.clock * 0.95 + particle.homeX * 0.035) * 0.70 * organic * wave;
       const blinkY = particle.eye ? (this.originY + 131 - particle.homeY) * blink : 0;
-      const targetX = particle.homeX + sway + waveX + (particle.homeX - centerX) * breathe;
-      const targetY = particle.homeY + levitation + waveY + blinkY + (particle.homeY - centerY) * breathe;
-      particle.vx += (targetX - particle.x) * this.stiffness * dt;
-      particle.vy += (targetY - particle.y) * this.stiffness * dt;
+      const targetX = particle.homeX + sway + waveX + floatX + (particle.homeX - centerX) * breathe * breath;
+      const targetY = particle.homeY + levitation + waveY + floatY + blinkY + (particle.homeY - centerY) * breathe * breath;
+      const spring = this.stiffness * (profile?.spring ?? 1);
+      const friction = profile ? Math.exp(-this.damping * profile.damping * dt) : baseFriction;
+      particle.vx += (targetX - particle.x) * spring * dt;
+      particle.vy += (targetY - particle.y) * spring * dt;
       particle.vx *= friction;
       particle.vy *= friction;
       particle.x += particle.vx * dt;
@@ -272,7 +286,7 @@ class ParticleWorld {
    * Les particules superposées mélangent leur couleur au lieu de s'écraser.
    * L'œil reçoit un poids supérieur pour rester lisible lors des déformations.
    */
-  writePixels(buffer) {
+  writePixels(buffer, { showAnatomy = false } = {}) {
     if (!(buffer instanceof Uint8ClampedArray) || buffer.length !== this.size * this.size * 4) {
       throw new RangeError('Tampon RGBA incompatible.');
     }
@@ -298,10 +312,13 @@ class ParticleWorld {
       const weight = opacity * (particle.eye ? 6 : 1);
       const totalWeight = previousWeight + weight;
       const variation = 0.72 + 0.28 * Math.sin(particle.phase + this.clock * 2.4) ** 2;
-      const tint = mix * variation;
-      const red = r + (accentR - r) * tint;
-      const green = g + (accentG - g) * tint;
-      const blue = b + (accentB - b) * tint;
+      const tint = Math.min(1, mix * variation * (particle.profile?.tint ?? 1));
+      let red = r + (accentR - r) * tint;
+      let green = g + (accentG - g) * tint;
+      let blue = b + (accentB - b) * tint;
+      if (showAnatomy && particle.profile) {
+        [red, green, blue] = particle.profile.debug;
+      }
 
       if (previousWeight > 0) this.lastCollisionCount += 1;
       buffer[offset] = (buffer[offset] * previousWeight + red * weight) / totalWeight;

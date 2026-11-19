@@ -1,7 +1,7 @@
 /** The UI only handles input and rendering; physics lives in ParticleWorld. */
 const canvas = document.querySelector('#mascot');
 const context = canvas.getContext('2d', { alpha: true });
-const world = new ParticleWorld(PERSONA_PIXEL_MAP);
+const world = new ParticleWorld(PERSONA_PIXEL_MAP, { anatomy: PERSONA_ANATOMY });
 const frame = context.createImageData(world.size, world.size);
 const status = document.querySelector('#status');
 const count = document.querySelector('#particle-count');
@@ -21,12 +21,31 @@ const organicControl = document.querySelector('#organic-motion');
 const organicValue = document.querySelector('#organic-motion-value');
 const linkCount = document.querySelector('#link-count');
 const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+const anatomyPreview = document.querySelector('#anatomy-preview');
+const anatomyLegend = document.querySelector('#anatomy-legend');
+const frameOptions = { showAnatomy: false };
 
 canvas.width = world.size;
 canvas.height = world.size;
 context.imageSmoothingEnabled = false;
 count.textContent = world.particles.length.toLocaleString('fr-FR');
 linkCount.textContent = world.cohesionField.linkCount.toLocaleString('fr-FR');
+document.querySelector('#anatomy-count').textContent = world.anatomy.names.length;
+
+for (let index = 0; index < world.anatomy.names.length; index += 1) {
+  const name = world.anatomy.names[index];
+  const sample = world.anatomy.profiles[index].debug;
+  const item = document.createElement('span');
+  const swatch = document.createElement('i');
+  swatch.style.backgroundColor = `rgb(${sample.join(',')})`;
+  swatch.setAttribute('aria-hidden', 'true');
+  item.append(swatch, `${name} (${world.anatomy.counts[index].toLocaleString('fr-FR')})`);
+  anatomyLegend.append(item);
+}
+anatomyPreview.addEventListener('change', () => {
+  frameOptions.showAnatomy = anatomyPreview.checked;
+  anatomyLegend.hidden = !anatomyPreview.checked;
+});
 
 const FIXED_STEP = 1 / 60;
 let lastTimestamp = null;
@@ -44,7 +63,7 @@ function updateStatus() {
 }
 
 function render() {
-  world.writePixels(frame.data);
+  world.writePixels(frame.data, frameOptions);
   context.putImageData(frame, 0, 0);
 }
 

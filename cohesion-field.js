@@ -29,7 +29,13 @@ class CohesionField {
       for (const cell of candidates) {
         if (cell < 0) continue;
         const neighbor = sourceIndex[cell];
-        if (neighbor < 0 || particles[neighbor].eye !== particle.eye) continue;
+        if (neighbor < 0) continue;
+        const other = particles[neighbor];
+        // Compatibility with the V2.1 unit fixtures, which only define 'eye'.
+        const sameRegion = particle.region === undefined || other.region === undefined
+          ? other.eye === particle.eye
+          : other.region === particle.region;
+        if (!sameRegion) continue;
         this.neighbors[i * 4 + this.counts[i]] = neighbor;
         this.counts[i] += 1;
         if (neighbor > i) this.linkCount += 1;
@@ -55,8 +61,9 @@ class CohesionField {
       }
       const dx = particle.x - particle.homeX;
       const dy = particle.y - particle.homeY;
-      particle.vx += ((neighborDx / count) - dx) * factor;
-      particle.vy += ((neighborDy / count) - dy) * factor;
+      const localFactor = factor * (particle.profile?.cohesion ?? 1);
+      particle.vx += ((neighborDx / count) - dx) * localFactor;
+      particle.vy += ((neighborDy / count) - dy) * localFactor;
     }
   }
 }

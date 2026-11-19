@@ -120,3 +120,50 @@ Les liaisons sont pré-calculées ; les forces locales sont évaluées à 60 Hz.
 Les mesures du panneau restent propres au navigateur et à la machine utilisés.
 Lors d'une dispersion importante, le personnage garde un aspect de poussière temporaire :
 le maintien permanent de masses ou de volumes nommés est volontairement réservé au lot 2.
+
+## V2.2 — Anatomie du personnage
+
+### Anatomie et pipeline d'assets
+
+L'exécution conserve les **15 886 pixels** indépendants et la physique V2.1. Chaque particule reçoit un identifiant de région et un profil physique au chargement, jamais pendant le rendu. **Aucune image n'est découpée dans le navigateur.**
+
+- `tools/export_anatomy.py` reconnaît hors navigateur les composantes déconnectées du `source.png` (gouttes et éclats), les volumes gris internes et les masques de la zone d'expression et des pattes. Les limites de zone reposent sur les mêmes coordonnées de référence que `tools/split_assets.py` ; elles sont **approximatives**, car le PNG d'origine est aplati.
+- `assets/persona-anatomy.js` contient les régions sous forme de segments RLE `[y, x, longueur, zone]` sur la même grille logique **200 × 200** que `persona-map.js`.
+- `anatomy.js` vérifie que chaque pixel visible appartient à **une et une seule zone** et associe un profil de mouvement, de cohésion, de rappel, de dissipation et de couleur.
+- `cohesion-field.js` ne relie que les voisins de la **même zone anatomique**. Les zones restent déformables ; le rappel vers la position d'origine évite de rompre les raccords du nuage.
+- `particle-world.js` module les forces de ressort, l'amortissement, les ondes, l'explosion, la révélation et le changement de couleur en fonction du profil, sans changer le nombre de particules.
+
+### Zones visibles
+
+| Zone | Nombre de points | Rôle physique |
+| --- | ---: | --- |
+| Corps | 5 978 | Silhouette cohérente, mouvements partagés |
+| Œil clair | 375 | Clignement et cohésion renforcée, dispersion limitée |
+| Expression | 1 569 | Reste solidaire de l'œil et du visage |
+| Volumes haut, gauche, droite | 2 722 / 2 278 / 512 | Respirent légèrement plus que le corps |
+| Gouttes gauche / droite | 612 / 544 | Flottent plus librement et réagissent davantage à l'impact |
+| Pattes gauche / droite | 575 / 663 | Plus fermes, oscillations réduites |
+| Éclats | 58 | Très mobiles, réaction accentuée |
+
+Le bouton **Visualiser les zones** colore provisoirement ces régions, affiche leur effectif et permet de vérifier leur placement. Le rendu normal et les couleurs d'origine sont restaurés immédiatement lorsqu'on désactive la case. Ce mode est **uniquement visuel** : il ne modifie pas la simulation.
+
+### Génération et tests
+
+```bash
+python tools/export_particle_map.py
+python tools/export_anatomy.py
+node --test tests/*.test.cjs
+node --check anatomy.js
+node --check particle-world.js
+node --check cohesion-field.js
+node --check app.js
+python -m http.server 8000
+```
+
+La génération nécessite **Pillow, NumPy et OpenCV** (uniquement dans les outils Python). Aucun package JavaScript supplémentaire n'est nécessaire pour exécuter la page HTML.
+
+Pour changer la forme du personnage, régénérer **d'abord** `persona-map.js`, puis `persona-anatomy.js`, et vérifier le mode d'inspection : les coordonnées et les composantes déconnectées proviennent du dessin existant, donc les heuristiques d'export doivent être adaptées si l'illustration change fortement.
+
+### Limites et suite
+
+L'anatomie est une segmentation par zones et non un véritable squelette articulé. Les frontières entre zones dépendent du PNG aplati : certaines zones superposées ne peuvent être reconstruites exactement. La cohésion V2.1 reste réutilisée, mais les liaisons transfrontalières sont volontairement absentes ; la physique reste approximative. Les états IA `listening`, `thinking` et `speaking` sont réservés à la V2.3.
