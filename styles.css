@@ -118,3 +118,42 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .frame-inspector-actions button { min-width: 0; padding: 10px 5px; font-size: 11px; }
 .frame-inspector-note { margin: 0; color: #b3a8c0; font-size: 11px; line-height: 1.5; font-variant-numeric: tabular-nums; }
 @media (max-width: 420px) { .frame-inspector-actions { grid-template-columns: 42px 1fr 42px 1fr; } }
+
+
+/* V2.4 : desktop control panel stays level with the image; each tab scrolls internally. */
+@media (min-width: 751px) {
+  .layout { --preview-stage-height: clamp(480px, 65vh, 650px); align-items: start; }
+  .preview-card, .controls-card { height: calc(var(--preview-stage-height) + 61px); align-self: start; }
+  .stage { height: var(--preview-stage-height); min-height: 0; }
+  .controls-card { padding: 0; overflow: hidden; }
+}
+.controls-card { display: flex; flex-direction: column; }
+.controls-heading { padding: 18px 20px 8px; flex: none; }
+.controls-heading .eyebrow { margin: 0 0 6px; font-size: 10px; }
+.controls-heading h1 { font-size: clamp(23px, 2.3vw, 32px); margin: 0 0 6px; }
+.controls-heading .intro { font-size: 12px; line-height: 1.4; margin: 0; }
+.controls-tabs { display: flex; gap: 6px; padding: 10px 16px 12px; flex: none; border-bottom: 1px solid #38333e; }
+.controls-tabs [role=tab] { min-width: 0; flex: 1; padding: 9px 5px; color: #beb5c9; background: #292630; border: 1px solid transparent; font-size: 11px; font-weight: 650; }
+.controls-tabs [role=tab][aria-selected=true] { background: #43384e; color: #f1e9ff; border-color: #756388; }
+.controls-tabs [role=tab]:hover:not(:disabled) { background: #4a4052; }
+.controls-viewport { min-height: 0; flex: 1; overflow-y: auto; overflow-x: hidden; overscroll-behavior-y: contain; scrollbar-color: #71657c #242128; }
+.controls-panel { padding: 14px 20px 24px; }
+.controls-panel[hidden] { display: none; }
+.controls-panel h2 { margin: 4px 0 12px; font-size: 17px; }
+.controls-panel .target-animation-controls { margin: 0 0 16px; }
+.controls-panel .behavior-controls { margin: 0 0 16px; }
+.controls-panel .button-group { margin-top: 8px; }
+.controls-panel .metrics { margin-top: 22px; }
+.controls-panel .controls-stack { margin-top: 20px; }
+.panel-help { font-size: 11px; line-height: 1.55; color: #aaa1b0; margin: 12px 0; }
+.role-force-controls { display: grid; gap: 16px; padding: 16px; background: #24202b; border: 1px solid #453b55; border-radius: 12px; }
+.role-force-controls .control-group label { margin-bottom: 10px; }
+.role-force-controls select { width: 100%; background: #312a39; color: #eee8f5; border: 1px solid #50445e; border-radius: 8px; padding: 10px 12px; font: inherit; }
+.role-force-controls select:focus-visible { outline: 2px solid #c4affc; outline-offset: 2px; }
+.role-force-controls .panel-help { margin: 0; }
+@media (max-width: 750px) {
+  .controls-card { height: auto; padding: 0; overflow: visible; }
+  .controls-viewport { overflow: visible; }
+  .controls-heading { padding: 20px 20px 8px; }
+  .controls-panel { padding: 16px 20px 22px; }
+}

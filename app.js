@@ -6,7 +6,8 @@ let targetPlayer;
 let controller;
 async function initializePersona() {
   targetPlayer = await TargetAnimationPlayer.create(world, PERSONA_IDLE_TARGETS);
-  controller = new BehaviorController(world, { animationPlayer: targetPlayer });
+  const roleMotionPlayer = new RoleMotionPlayer(world);
+  controller = new BehaviorController(world, { animationPlayer: targetPlayer, roleMotionPlayer });
 const frame = context.createImageData(world.size, world.size);
 const status = document.querySelector('#status');
 const count = document.querySelector('#particle-count');
@@ -36,6 +37,12 @@ const voiceControl = document.querySelector('#voice-level');
 const voiceValue = document.querySelector('#voice-level-value');
 const roleTargetControl = document.querySelector('#role-target');
 const animationStatus = document.querySelector('#animation-status');
+const roleMotionControl = document.querySelector('#role-motion');
+const roleMotionPlay = document.querySelector('#role-motion-play');
+const roleMotionStop = document.querySelector('#role-motion-stop');
+const roleMotionStatus = document.querySelector('#role-motion-status');
+const controlViewport = document.querySelector('#controls-viewport');
+const tabButtons = [...document.querySelectorAll('[data-panel-target]')];
 const playIdleButton = document.querySelector('#play-idle');
 const stopIdleButton = document.querySelector('#stop-idle');
 const idleFrameControl = document.querySelector('#idle-frame');
@@ -122,6 +129,7 @@ function syncBehaviorControls() {
   voiceControl.disabled = snapshot.state !== 'speaking';
   refreshRoleLegend();
   syncAnimationControls();
+  updateRoleMotionStatus();
   updateStatus();
 }
 
@@ -148,6 +156,38 @@ function inspectFrame(index) {
   lastTimestamp = null;
   syncBehaviorControls();
   render();
+}
+
+function activatePanel(target, focus = false) {
+  for (const tab of tabButtons) {
+    const active = tab.dataset.panelTarget === target;
+    tab.setAttribute('aria-selected', String(active));
+    tab.tabIndex = active ? 0 : -1;
+    document.getElementById(tab.dataset.panelTarget).hidden = !active;
+    if (active && focus) tab.focus();
+  }
+  controlViewport.scrollTop = 0;
+}
+
+for (const [index, tab] of tabButtons.entries()) {
+  tab.addEventListener('click', () => activatePanel(tab.dataset.panelTarget));
+  tab.addEventListener('keydown', event => {
+    const offsets = { ArrowRight: 1, ArrowLeft: -1 };
+    const offset = offsets[event.key];
+    if (offset === undefined && event.key !== 'Home' && event.key !== 'End') return;
+    event.preventDefault();
+    const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabButtons.length - 1 :
+      (index + offset + tabButtons.length) % tabButtons.length;
+    activatePanel(tabButtons[next].dataset.panelTarget, true);
+  });
+}
+
+function updateRoleMotionStatus() {
+  const motion = controller.getSnapshot().roleMotion;
+  roleMotionStop.disabled = !motion.playing;
+  roleMotionStatus.textContent = motion.playing
+    ? `${motion.name} · ${motion.role ?? 'toutes les particules'} · ${Math.round(motion.progress * 100)} %`
+    : 'Aucun mouvement de rôle en cours.';
 }
 
 function render() {
@@ -181,6 +221,7 @@ function animate(timestamp) {
   renderingTimeTotal += renderEnd - renderStart;
   updateStatus();
   syncAnimationControls();
+  updateRoleMotionStatus();
 
   frameCounter++;
   if (!fpsStart) fpsStart = timestamp;
@@ -272,6 +313,16 @@ document.querySelector('#attract-trigger').addEventListener('click', () => {
 document.querySelector('#repel-trigger').addEventListener('click', () => {
   controller.trigger('field', { x: world.size / 2, y: world.size / 2, radius: 145,
     strength: 100, ...(roleTargetControl.value ? { role: roleTargetControl.value } : {}) });
+});
+
+roleMotionPlay.addEventListener('click', () => {
+  controller.dispatch({ type: 'role-motion', name: roleMotionControl.value,
+    role: roleTargetControl.value || null });
+  updateRoleMotionStatus();
+});
+roleMotionStop.addEventListener('click', () => {
+  controller.dispatch({ type: 'role-motion', action: 'stop' });
+  updateRoleMotionStatus();
 });
 
 pauseButton.addEventListener('click', () => {

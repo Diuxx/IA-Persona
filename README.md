@@ -391,3 +391,41 @@ Ils permettent de choisir le bon point d'arrêt avant de demander une correction
 Quand la boucle est raccourcie, son retour de la dernière frame vers la première
 peut ne pas être fluide si ces silhouettes diffèrent : la version finale pourra
 ré-exporter un raccord artistique adapté au numéro choisi.
+
+### V2.4 — Panneau de pilotage compact et animations de rôles
+
+Sur ordinateur, le panneau de droite conserve **exactement la hauteur de la
+prévisualisation**, y compris son bandeau supérieur. Il propose trois onglets
+accessibles au clavier : **Animations**, **Rôles / forces** et **Réglages**.
+Chaque onglet défile à l'intérieur du panneau si nécessaire, tandis que le nuage
+reste visible. Sur mobile (largeur ≤ 750 px), les panneaux s'empilent et le
+défilement redevient celui de la page.
+
+L'onglet **Rôles / forces** remet en avant `Rôle ciblé par les forces` et ses
+actions **Attirer** / **Repousser**. En complément, trois mouvements physiques
+courts sont disponibles et peuvent viser le même rôle :
+
+- `pulse` : expansion / contraction temporaire ;
+- `wave` : ondulation déphasée selon la position des particules ;
+- `orbit` : poussée tangentielle, comme une rotation.
+
+Ces effets sont simulés par `role-motion-player.js`. Ils n'utilisent **pas de
+nouvelles frames GIF**, n'appliquent aucune couleur et s'ajoutent temporairement
+aux animations cibles. La lecture `idle` par frames, l'inspecteur 1–40 et les
+autres interactions restent inchangés.
+
+Exemple de commande contrôlée :
+
+```js
+window.persona.dispatch({ type: 'role-motion', name: 'orbit', role: 'float' });
+window.persona.dispatch({ type: 'role-motion', action: 'stop' });
+```
+
+Le registre de mouvements est volontairement fermé : seuls `pulse`, `wave`
+et `orbit` sont autorisés, et le rôle doit être connu du registre. Les
+mouvements s'arrêtent automatiquement après 1,6 à 2,2 secondes. La pause de
+la simulation les fige, et une réinitialisation les arrête.
+
+Pour ajouter une vraie animation par frames à côté de `idle`, il faudra
+importer son GIF de référence et étendre le registre des animations cibles :
+les trois mouvements physiques ne se substituent pas à ce pipeline.

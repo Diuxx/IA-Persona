@@ -12,6 +12,7 @@
   <script defer src="./anatomy.js"></script>
   <script defer src="./role-registry.js"></script>
   <script defer src="./particle-world.js"></script>
+  <script defer src="./role-motion-player.js"></script>
   <script defer src="./behavior-controller.js"></script>
   <script defer src="./assets/animations/idle-targets.js"></script>
   <script defer src="./target-animation-player.js"></script>
@@ -34,117 +35,152 @@
           <div class="stage-subtitle">UNE CRÉATURE FAITE DE POINTS.</div>
         </div>
       </section>
-      <aside class="controls-card">
-        <p class="eyebrow">PHYSIQUE / MATIÈRE VIVANTE</p>
-        <h1>Un nuage<br><span>de pixels.</span></h1>
-        <p class="intro">Un nuage vivant : ses zones ont des rôles, ses pixels partagent une même matière physique et les commandes ciblent des capacités, pas des morceaux isolés.</p>
-        <div class="metrics">
-          <div><strong id="particle-count">—</strong><span>particules</span></div>
-          <div><strong>200 × 200</strong><span>grille source</span></div>
+      <aside class="controls-card" aria-label="Commandes du personnage">
+        <header class="controls-heading">
+          <p class="eyebrow">PERSONA / CONTRÔLES</p>
+          <h1>Nuage vivant<span>.</span></h1>
+          <p class="intro">Animations et mouvements pilotés par les pixels.</p>
+        </header>
+        <div class="controls-tabs" role="tablist" aria-label="Catégories des contrôles">
+          <button type="button" id="tab-animations" role="tab" aria-controls="panel-animations" aria-selected="true" tabindex="0" data-panel-target="panel-animations">Animations</button>
+          <button type="button" id="tab-roles" role="tab" aria-controls="panel-roles" aria-selected="false" tabindex="-1" data-panel-target="panel-roles">Rôles / forces</button>
+          <button type="button" id="tab-settings" role="tab" aria-controls="panel-settings" aria-selected="false" tabindex="-1" data-panel-target="panel-settings">Réglages</button>
         </div>
-        <div class="performance-metrics" aria-label="Mesures de performance">
-          <span>Simulation <strong id="simulation-ms">—</strong> ms</span>
-          <span>Rendu <strong id="rendering-ms">—</strong> ms</span>
-          <span>Collisions <strong id="collision-count">—</strong></span>
-          <span>Liaisons <strong id="link-count">—</strong></span>
-        </div>
-        <div class="target-animation-controls" aria-label="Animation par convergence">
-          <p class="eyebrow">ANIMATION CIBLE / IDLE</p>
-          <p class="hint">Le GIF sert de référence hors navigateur : les pixels convergent vers 40 poses cibles interpolées.</p>
-          <div class="behavior-actions">
-            <button id="play-idle" type="button">Jouer l’idle</button>
-            <button id="stop-idle" type="button" class="secondary">Arrêter l’idle</button>
-          </div>
-          <div class="frame-inspector" aria-label="Inspection de l'animation idle">
-            <div class="frame-inspector-heading">
-              <label for="idle-frame">Frame à contrôler</label>
-              <output id="idle-frame-value" for="idle-frame">1 / 40</output>
+        <div class="controls-viewport" id="controls-viewport">
+          <section class="controls-panel" id="panel-animations" role="tabpanel" aria-labelledby="tab-animations">
+<div aria-label="Animation par convergence" class="target-animation-controls">
+<p class="eyebrow">ANIMATION CIBLE / IDLE</p>
+<p class="hint">Le GIF sert de référence hors navigateur : les pixels convergent vers 40 poses cibles interpolées.</p>
+<div class="behavior-actions">
+<button id="play-idle" type="button">Jouer l’idle</button>
+<button class="secondary" id="stop-idle" type="button">Arrêter l’idle</button>
+</div>
+<div aria-label="Inspection de l'animation idle" class="frame-inspector">
+<div class="frame-inspector-heading">
+<label for="idle-frame">Frame à contrôler</label>
+<output for="idle-frame" id="idle-frame-value">1 / 40</output>
+</div>
+<input id="idle-frame" max="40" min="1" step="1" type="range" value="1"/>
+<div class="frame-inspector-actions">
+<button aria-label="Frame précédente" class="secondary" id="idle-prev" type="button">←</button>
+<button class="secondary" id="idle-freeze" type="button">Figer</button>
+<button aria-label="Frame suivante" class="secondary" id="idle-next" type="button">→</button>
+<button class="secondary" id="idle-resume" type="button">Reprendre</button>
+</div>
+<div class="frame-inspector-heading">
+<label for="idle-loop-end">Dernière frame de la boucle</label>
+<output for="idle-loop-end" id="idle-loop-end-value">40 / 40</output>
+</div>
+<input id="idle-loop-end" max="40" min="2" step="1" type="range" value="40"/>
+<p class="frame-inspector-note" id="idle-loop-duration">Boucle de 3,20 s</p>
+<p class="frame-inspector-note">Glisse le curseur pour figer une frame et relève son numéro pour me demander une correction.</p>
+</div>
+<p aria-live="polite" class="target-animation-status" id="animation-status">Initialisation…</p>
+</div>
+<div aria-label="Comportements du personnage" class="behavior-controls">
+<div class="control-group">
+<label for="behavior-state"><span>État du personnage</span></label>
+<select id="behavior-state">
+<option value="idle">Idle · Repos</option>
+<option value="listening">Listening · Écoute</option>
+<option value="thinking">Thinking · Réflexion</option>
+<option value="speaking">Speaking · Parole</option>
+</select>
+</div>
+<div class="control-group">
+<label for="behavior-energy"><span>Énergie</span><output for="behavior-energy" id="behavior-energy-value">45 %</output></label>
+<input id="behavior-energy" max="100" min="0" step="5" type="range" value="45"/>
+</div>
+<div class="control-group">
+<label for="voice-level"><span>Intensité vocale</span><output for="voice-level" id="voice-level-value">0 %</output></label>
+<input disabled="" id="voice-level" max="100" min="0" step="5" type="range" value="0"/>
+</div>
+
+
+</div>
+            <p class="panel-help">L’animation <strong>idle</strong> utilise le GIF de référence. Les autres états ajustent pour l’instant la physique : leurs animations par frames seront ajoutées avec leurs fichiers sources.</p>
+          </section>
+          <section class="controls-panel" id="panel-roles" role="tabpanel" aria-labelledby="tab-roles" hidden>
+            <h2>Rôles et mouvements</h2>
+            <p class="panel-help">Cible toutes les particules ou uniquement celles ayant le rôle sélectionné. Les effets s’ajoutent à l’animation courante sans modifier ses couleurs.</p>
+            <div class="role-force-controls">
+<div class="control-group">
+<label for="role-target"><span>Rôle ciblé par les forces</span></label>
+<select id="role-target">
+<option value="">Toutes les particules</option>
+</select>
+</div>
+<div class="behavior-actions">
+<button class="secondary" id="attract-trigger" type="button">Attirer les pixels</button>
+<button class="secondary" id="repel-trigger" type="button">Repousser les pixels</button>
+</div>
+              <div class="control-group role-motion-picker">
+                <label for="role-motion">Animation physique du rôle</label>
+                <select id="role-motion">
+                  <option value="pulse">Pulsation</option>
+                  <option value="wave">Ondulation</option>
+                  <option value="orbit">Rotation</option>
+                </select>
+              </div>
+              <div class="behavior-actions">
+                <button id="role-motion-play" type="button">Animer ce rôle</button>
+                <button id="role-motion-stop" class="secondary" type="button" disabled>Arrêter le mouvement</button>
+              </div>
+              <p class="panel-help" id="role-motion-status" role="status">Aucun mouvement de rôle en cours.</p>
             </div>
-            <input id="idle-frame" type="range" min="1" max="40" step="1" value="1" />
-            <div class="frame-inspector-actions">
-              <button id="idle-prev" type="button" class="secondary" aria-label="Frame précédente">←</button>
-              <button id="idle-freeze" type="button" class="secondary">Figer</button>
-              <button id="idle-next" type="button" class="secondary" aria-label="Frame suivante">→</button>
-              <button id="idle-resume" type="button" class="secondary">Reprendre</button>
-            </div>
-            <div class="frame-inspector-heading">
-              <label for="idle-loop-end">Dernière frame de la boucle</label>
-              <output id="idle-loop-end-value" for="idle-loop-end">40 / 40</output>
-            </div>
-            <input id="idle-loop-end" type="range" min="2" max="40" step="1" value="40" />
-            <p class="frame-inspector-note" id="idle-loop-duration">Boucle de 3,20 s</p>
-            <p class="frame-inspector-note">Glisse le curseur pour figer une frame et relève son numéro pour me demander une correction.</p>
-          </div>
-          <p class="target-animation-status" id="animation-status" aria-live="polite">Initialisation…</p>
+            <p class="panel-help">Ces trois mouvements sont des effets de particules, pas de nouveaux GIF. Ils servent à expérimenter les rôles ; les animations cibles conservent leur propre lecteur.</p>
+          </section>
+          <section class="controls-panel" id="panel-settings" role="tabpanel" aria-labelledby="tab-settings" hidden>
+            <h2>Physique et diagnostic</h2>
+<div class="button-group">
+<button id="reveal-trigger" type="button">Révéler le personnage</button>
+<button class="secondary" id="explode-trigger" type="button">Explosion</button>
+<button class="secondary" id="reset-trigger" type="button">Réinitialiser</button>
+<button class="secondary" id="pause-button" type="button">Pause</button>
+</div>
+<div class="controls-stack">
+<div class="control-group">
+<label for="elasticity"><span>Élasticité</span><output for="elasticity" id="elasticity-value">30</output></label>
+<input id="elasticity" max="70" min="5" step="1" type="range" value="30"/>
+</div>
+<div class="control-group">
+<label for="dispersion"><span>Dispersion</span><output for="dispersion" id="dispersion-value">100 %</output></label>
+<input id="dispersion" max="200" min="30" step="5" type="range" value="100"/>
+</div>
+<div class="control-group">
+<label for="cohesion"><span>Cohésion des pixels</span><output for="cohesion" id="cohesion-value">55</output></label>
+<input id="cohesion" max="120" min="0" step="5" type="range" value="55"/>
+</div>
+<div class="control-group">
+<label for="organic-motion"><span>Respiration organique</span><output for="organic-motion" id="organic-motion-value">100 %</output></label>
+<input id="organic-motion" max="200" min="0" step="5" type="range" value="100"/>
+</div>
+<div class="anatomy-section">
+<label class="anatomy-toggle" for="anatomy-preview">
+<span>Visualiser les zones (<strong id="anatomy-count">—</strong>)</span>
+<input id="anatomy-preview" type="checkbox"/>
+</label>
+<div aria-label="Légende anatomique" class="anatomy-legend" hidden="" id="anatomy-legend"></div>
+</div>
+<div class="control-group color-group">
+<label for="accent"><span>Couleur des effets manuels</span></label>
+<input id="accent" type="color" value="#a58afc"/>
+</div>
+</div>
+<div class="metrics">
+<div><strong id="particle-count">—</strong><span>particules</span></div>
+<div><strong>200 × 200</strong><span>grille source</span></div>
+</div>
+<div aria-label="Mesures de performance" class="performance-metrics">
+<span>Simulation <strong id="simulation-ms">—</strong> ms</span>
+<span>Rendu <strong id="rendering-ms">—</strong> ms</span>
+<span>Collisions <strong id="collision-count">—</strong></span>
+<span>Liaisons <strong id="link-count">—</strong></span>
+</div>
+<div class="layer-tags"><span>4 états</span><span>Rôles dynamiques</span><span>Matériaux partagés</span><span>11 zones logiques</span><span>Cohésion locale</span><span>Respiration</span><span>Ressort</span><span>Morphing couleur</span><span>Clignement</span></div>
+            <p class="panel-help">Les rôles sont indépendants des matériaux. Les teintes de diagnostic et les effets manuels n’altèrent pas les couleurs des états.</p>
+          </section>
         </div>
-        <div class="behavior-controls" aria-label="Comportements du personnage">
-          <div class="control-group">
-            <label for="behavior-state"><span>État du personnage</span></label>
-            <select id="behavior-state">
-              <option value="idle">Idle · Repos</option>
-              <option value="listening">Listening · Écoute</option>
-              <option value="thinking">Thinking · Réflexion</option>
-              <option value="speaking">Speaking · Parole</option>
-            </select>
-          </div>
-          <div class="control-group">
-            <label for="behavior-energy"><span>Énergie</span><output id="behavior-energy-value" for="behavior-energy">45 %</output></label>
-            <input id="behavior-energy" type="range" min="0" max="100" step="5" value="45" />
-          </div>
-          <div class="control-group">
-            <label for="voice-level"><span>Intensité vocale</span><output id="voice-level-value" for="voice-level">0 %</output></label>
-            <input id="voice-level" type="range" min="0" max="100" step="5" value="0" disabled />
-          </div>
-          <div class="control-group">
-            <label for="role-target"><span>Rôle ciblé par les forces</span></label>
-            <select id="role-target">
-              <option value="">Toutes les particules</option>
-            </select>
-          </div>
-          <div class="behavior-actions">
-            <button id="attract-trigger" type="button" class="secondary">Attirer les pixels</button>
-            <button id="repel-trigger" type="button" class="secondary">Repousser les pixels</button>
-          </div>
-        </div>
-        <div class="button-group">
-          <button id="reveal-trigger" type="button">Révéler le personnage</button>
-          <button id="explode-trigger" type="button" class="secondary">Explosion</button>
-          <button id="reset-trigger" type="button" class="secondary">Réinitialiser</button>
-          <button id="pause-button" type="button" class="secondary">Pause</button>
-        </div>
-        <div class="controls-stack">
-          <div class="control-group">
-            <label for="elasticity"><span>Élasticité</span><output id="elasticity-value" for="elasticity">30</output></label>
-            <input id="elasticity" type="range" min="5" max="70" step="1" value="30" />
-          </div>
-          <div class="control-group">
-            <label for="dispersion"><span>Dispersion</span><output id="dispersion-value" for="dispersion">100 %</output></label>
-            <input id="dispersion" type="range" min="30" max="200" step="5" value="100" />
-          </div>
-          <div class="control-group">
-            <label for="cohesion"><span>Cohésion des pixels</span><output id="cohesion-value" for="cohesion">55</output></label>
-            <input id="cohesion" type="range" min="0" max="120" step="5" value="55" />
-          </div>
-          <div class="control-group">
-            <label for="organic-motion"><span>Respiration organique</span><output id="organic-motion-value" for="organic-motion">100 %</output></label>
-            <input id="organic-motion" type="range" min="0" max="200" step="5" value="100" />
-          </div>
-          <div class="anatomy-section">
-            <label class="anatomy-toggle" for="anatomy-preview">
-              <span>Visualiser les zones (<strong id="anatomy-count">—</strong>)</span>
-              <input id="anatomy-preview" type="checkbox" />
-            </label>
-            <div id="anatomy-legend" class="anatomy-legend" hidden aria-label="Légende anatomique"></div>
-          </div>
-          <div class="control-group color-group">
-            <label for="accent"><span>Couleur des effets manuels</span></label>
-            <input id="accent" type="color" value="#a58afc" />
-          </div>
-        </div>
-        <p class="hint">Les régions définissent des rôles et des matériaux indépendants. L’API <code>window.persona.dispatch()</code> permet de cibler un rôle ou de modifier ses attributions. Aucune IA n'est connectée.</p>
-        <div class="divider"></div>
-        <p class="eyebrow">MOTEUR</p>
-        <div class="layer-tags"><span>4 états</span><span>Rôles dynamiques</span><span>Matériaux partagés</span><span>11 zones logiques</span><span>Cohésion locale</span><span>Respiration</span><span>Ressort</span><span>Morphing couleur</span><span>Clignement</span></div>
       </aside>
     </div>
     <footer>POC expérimental · Source PNG originale préservée · Canvas 2D</footer>
