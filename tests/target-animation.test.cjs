@@ -18,11 +18,11 @@ async function createAnimatedWorld() {
   return { world, player, controller };
 }
 
-test('les 43 PNG fournissent 22 poses (une boucle) sur 1,76 seconde', async () => {
+test('les 43 PNG fournissent 43 poses sur 1,72 seconde', async () => {
   const { world, player } = await createAnimatedWorld();
   assert.equal(PERSONA_IDLE_TARGETS.sourceFrames, 43);
-  assert.equal(PERSONA_IDLE_TARGETS.durationMs, 1760);
-  assert.equal(player.frames.length, 22);
+  assert.equal(PERSONA_IDLE_TARGETS.durationMs, 1720);
+  assert.equal(player.frames.length, 43);
   assert.ok(player.frames.every(frame => frame.length === world.particles.length * 3));
   assert.equal(world.particles.length, 15886);
 });
@@ -45,10 +45,10 @@ test('les mêmes particules conservent leur rôle, matériau et identité', asyn
   assert.ok(world.particles.every(p => Number.isFinite(p.x) && Number.isFinite(p.y)));
 });
 
-test('interpolation : à 40 ms le lecteur vise exactement le milieu des deux premières poses', async () => {
+test('interpolation : à 20 ms le lecteur vise exactement le milieu des deux premières poses', async () => {
   const { world, player } = await createAnimatedWorld();
   player.play();
-  player.advance(0.04);
+  player.advance(0.02);
   assert.equal(player.frame, 0);
   assert.equal(world.targetPose.from, player.frames[0]);
   assert.equal(world.targetPose.to, player.frames[1]);
@@ -58,13 +58,13 @@ test('interpolation : à 40 ms le lecteur vise exactement le milieu des deux pre
 test('la boucle retourne à la première frame sans arrêter l’animation', async () => {
   const { player } = await createAnimatedWorld();
   player.play();
-  player.advance(1.78);
+  player.advance(1.74);
   assert.equal(player.playing, true);
   assert.equal(player.frame, 0);
-  assert.ok(Math.abs(player.getSnapshot().progress - (0.02 / 1.76)) < 1e-6);
+  assert.ok(Math.abs(player.getSnapshot().progress - (0.02 / 1.72)) < 1e-6);
 });
 
-test('une animation non bouclée s’arrête et libère la pose après 1,76 seconde', async () => {
+test('une animation non bouclée s’arrête et libère la pose après 1,72 seconde', async () => {
   const { world, player, controller } = await createAnimatedWorld();
   controller.dispatch({ type: 'animation', name: 'idle', loop: false });
   assert.equal(world.targetPose !== null, true);
@@ -188,10 +188,15 @@ test('un gzip dont la sortie dépasse la taille déclarée est rejeté avant all
   );
 });
 
-test('les deux extrémités de la boucle décrivent exactement les mêmes particules', async () => {
+test('les deux extrémités de la boucle restent proches sans écraser la dernière pose source', async () => {
   const { player, world } = await createAnimatedWorld();
-  assert.deepEqual(player.frames.at(-1), player.frames[0]);
-  assert.equal(player.frames.length, 22);
+  assert.notDeepEqual(player.frames.at(-1), player.frames[0]);
+  let moved = 0;
+  for (let offset = 0; offset < player.frames[0].length; offset += 3) {
+    if (player.frames.at(-1)[offset] !== player.frames[0][offset] || player.frames.at(-1)[offset + 1] !== player.frames[0][offset + 1]) moved += 1;
+  }
+  assert.ok(moved > 100, 'la dernière pose doit rester distincte de la première');
+  assert.equal(player.frames.length, 43);
   assert.equal(world.particles.length, 15886);
 });
 

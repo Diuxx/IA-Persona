@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Compile tracked, fixed-count particle poses from the user's idle PNG sequence.
+"""Compile tracked particle poses from the user's full idle PNG sequence.
 
-The source archive contains two nearly identical cycles of 21/22 frames.
-Keep frames 1–22 (the last pose closes the loop), so idle doesn't repeat twice.
-Identity matching happens offline; the browser only interpolates targets.
+Every source PNG becomes one target pose. We keep the 43 provided frames in
+order to preserve the user's original timing and smoothness. Identity matching
+happens offline; the browser only interpolates between consecutive targets.
 """
 from __future__ import annotations
 
@@ -28,8 +28,8 @@ SIZE = 200
 ART_BOUNDS = (0, 8, 190, 225)  # Fixed for ALL frames: keep top droplets + feet, exclude lettering.
 BACKGROUND = 102
 SOURCE_FRAME_COUNT = 43
-LOOP_FRAMES = 22
-FRAME_DURATION_MS = 80
+LOOP_FRAMES = 43
+FRAME_DURATION_MS = 40
 MAX_SOURCE_BYTES = 1_000_000
 
 
@@ -180,9 +180,9 @@ def build_targets(classes_by_frame: list[np.ndarray], source_xy: np.ndarray, kin
             packed[ids, 2] = classes[selected[:, 1], selected[:, 0]]
             previous[group] = selected.astype(np.float32)
         positions_by_frame.append(packed)
-    # Frame 22 is visually the first pose again. Closing at the exact same
-    # positions also prevents an identity shuffle during endless playback.
-    positions_by_frame[-1] = positions_by_frame[0].copy()
+    # Keep the final frame exactly as provided by the user. The runtime loops
+    # from the last pose back to the first through interpolation, but the source
+    # sequence itself must remain untouched for faithful timing and fluidity.
     return np.stack(positions_by_frame)
 
 
@@ -191,7 +191,8 @@ def compile_animation(source: Path, destination: Path, loop_frames: int = LOOP_F
     if not 20 <= frame_duration_ms <= 300:
         raise ValueError('Frame duration should be between 20 and 300 milliseconds')
     classes_by_frame, source_frames = read_source_frames(source, loop_frames)
-    # The final selected pose must be close enough to first for a seamless cut.
+    # The final source pose should remain close enough to the first one for a
+    # clean loop, but it is not forced to be identical.
     first = classes_by_frame[0] > 0
     last = classes_by_frame[-1] > 0
     overlap = np.count_nonzero(first & last) / np.count_nonzero(first | last)

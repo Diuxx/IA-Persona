@@ -4,7 +4,7 @@
  * Material coefficients determine how each pixel responds to that influence.
  */
 class CohesionField {
-  constructor(particles, width, height, originX, originY) {
+  constructor(particles, width, height, originX, originY, maxDistance = 1, occupancy = null) {
     this.neighbors = new Int32Array(particles.length * 4).fill(-1);
     this.counts = new Uint8Array(particles.length);
     this.linkCount = 0;
@@ -20,19 +20,21 @@ class CohesionField {
       const particle = particles[i];
       const x = Math.round(particle.homeX - originX);
       const y = Math.round(particle.homeY - originY);
-      const candidates = [
-        x > 0 ? y * width + x - 1 : -1,
-        x + 1 < width ? y * width + x + 1 : -1,
-        y > 0 ? (y - 1) * width + x : -1,
-        y + 1 < height ? (y + 1) * width + x : -1,
-      ];
-      for (const cell of candidates) {
-        if (cell < 0) continue;
-        const neighbor = sourceIndex[cell];
-        if (neighbor < 0) continue;
-        this.neighbors[i * 4 + this.counts[i]] = neighbor;
-        this.counts[i] += 1;
-        if (neighbor > i) this.linkCount += 1;
+      const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+      for (const [dx, dy] of directions) {
+        for (let distance = 1; distance <= maxDistance; distance += 1) {
+          const xx = x + dx * distance;
+          const yy = y + dy * distance;
+          if (xx < 0 || yy < 0 || xx >= width || yy >= height) break;
+          const cell = yy * width + xx;
+          if (occupancy && !occupancy[cell]) break;
+          const neighbor = sourceIndex[cell];
+          if (neighbor < 0) continue;
+          this.neighbors[i * 4 + this.counts[i]] = neighbor;
+          this.counts[i] += 1;
+          if (neighbor > i) this.linkCount += 1;
+          break;
+        }
       }
     }
   }

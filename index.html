@@ -16,6 +16,7 @@
   <script defer src="./behavior-controller.js"></script>
   <script defer src="./assets/animations/idle-targets.js"></script>
   <script defer src="./target-animation-player.js"></script>
+<script defer src="./pixel-stabilizer.js"></script>
   <script defer src="./app.js"></script>
 </head>
 <body>
@@ -50,7 +51,7 @@
           <section class="controls-panel" id="panel-animations" role="tabpanel" aria-labelledby="tab-animations">
 <div aria-label="Animation par convergence" class="target-animation-controls">
 <p class="eyebrow">ANIMATION CIBLE / IDLE</p>
-<p class="hint">Le GIF sert de référence hors navigateur : les pixels convergent vers 22 poses cibles interpolées.</p>
+<p class="hint">Le GIF sert de référence hors navigateur : les pixels convergent vers les 43 frames cibles interpolées.</p>
 <div class="behavior-actions">
 <button id="play-idle" type="button">Jouer l’idle</button>
 <button class="secondary" id="stop-idle" type="button">Arrêter l’idle</button>
@@ -58,21 +59,36 @@
 <div aria-label="Inspection de l'animation idle" class="frame-inspector">
 <div class="frame-inspector-heading">
 <label for="idle-frame">Frame à contrôler</label>
-<output for="idle-frame" id="idle-frame-value">1 / 22</output>
+<output for="idle-frame" id="idle-frame-value">1 / 43</output>
 </div>
-<input id="idle-frame" max="22" min="1" step="1" type="range" value="1"/>
+<input id="idle-frame" max="43" min="1" step="1" type="range" value="1"/>
 <div class="frame-inspector-actions">
 <button aria-label="Frame précédente" class="secondary" id="idle-prev" type="button">←</button>
 <button class="secondary" id="idle-freeze" type="button">Figer</button>
 <button aria-label="Frame suivante" class="secondary" id="idle-next" type="button">→</button>
 <button class="secondary" id="idle-resume" type="button">Reprendre</button>
 </div>
+<div class="control-group">
+<label for="idle-speed"><span>Vitesse du mouvement</span><output for="idle-speed" id="idle-speed-value">1×</output></label>
+<input id="idle-speed" type="range" min="0.25" max="3" step="0.25" value="1"/>
+</div>
+<div class="control-group">
+<label for="particle-density"><span>Nombre de particules simulées</span></label>
+<select id="particle-density">
+<option value="2000">2 000 · Léger</option>
+<option value="4000">4 000</option>
+<option value="8000">8 000</option>
+<option value="12000">12 000</option>
+<option value="15886" selected>15 886 · Original</option>
+</select>
+<p class="frame-inspector-note">La densité modifie réellement la simulation et la cohésion, sans retirer de frames.</p>
+</div>
 <div class="frame-inspector-heading">
 <label for="idle-loop-end">Dernière frame de la boucle</label>
-<output for="idle-loop-end" id="idle-loop-end-value">22 / 22</output>
+<output for="idle-loop-end" id="idle-loop-end-value">43 / 43</output>
 </div>
-<input id="idle-loop-end" max="22" min="2" step="1" type="range" value="22"/>
-<p class="frame-inspector-note" id="idle-loop-duration">Boucle de 1,76 s</p>
+<input id="idle-loop-end" max="43" min="2" step="1" type="range" value="43"/>
+<p class="frame-inspector-note" id="idle-loop-duration">Boucle de 1,72 s</p>
 <p class="frame-inspector-note">Glisse le curseur pour figer une frame et relève son numéro pour me demander une correction.</p>
 </div>
 <p aria-live="polite" class="target-animation-status" id="animation-status">Initialisation…</p>

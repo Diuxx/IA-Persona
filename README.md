@@ -328,10 +328,10 @@ node --check app.js
 ## V2.4 — Animations par frames cibles : `idle`
 
 L'animation idle est désormais compilée depuis les **43 PNG fournis dans
-`idle-frames.zip`**. Ces PNG contiennent deux cycles quasi identiques : le premier
-se termine à la frame 22. L'animation utilise **22 poses sur 1,76 s** (80 ms par
-pose), avec une fermeture parfaite des destinations entre dernière et première
-pose. Les **15 886 particules** conservent leurs identités, rôles et matériaux.
+`idle-frames.zip`**. **Les 43 frames sont toutes conservées dans l’ordre**, même
+lorsque certaines poses se ressemblent. L’animation utilise **43 poses sur 1,72 s**
+(40 ms par pose). La transition de la frame 43 à la frame 1 est interpolée sans
+remplacer ni supprimer la dernière pose. Les **15 886 particules** conservent leurs identités, rôles et matériaux.
 Les volumes, gouttes, pattes et teintes noir/gris/blanc suivent directement les
 poses d'origine, sans seconde ondulation ou clignement procédural.
 
@@ -361,19 +361,19 @@ La commande `node --test tests/*.test.cjs` inclut un contrôle des chemins de sc
 
 ### V2.4 — Inspecteur de frames idle
 
-L'animation source contient 22 poses cibles sur 1,76 s (80 ms par pose).
+L'animation source contient 43 poses cibles sur 1,72 s (40 ms par pose).
 La page permet maintenant de **figer la frame actuelle**, d'avancer ou reculer
 image par image et de choisir la **dernière frame** de la boucle sans modifier
-l'asset. Les numéros affichés vont de **1 à 22** ; l'API JavaScript utilise des
-indices **0 à 21**. La sélection affiche la pose de référence **exacte**, sans
+l'asset. Les numéros affichés vont de **1 à 43** ; l'API JavaScript utilise des
+indices **0 à 42**. La sélection affiche la pose de référence **exacte**, sans
 attendre le retour élastique des particules. La simulation est temporairement
 figée pendant l'inspection mais elle reprend normalement après « Reprendre ».
 
 Exemples depuis la console :
 
 ```js
-window.persona.dispatch({ type: 'animation', action: 'seek', frame: 17 }); // affiche la frame 18/22
-window.persona.dispatch({ type: 'animation', action: 'loop-end', frame: 17 }); // boucle de 18 frames / 1,44 s
+window.persona.dispatch({ type: 'animation', action: 'seek', frame: 17 }); // affiche la frame 18/43
+window.persona.dispatch({ type: 'animation', action: 'loop-end', frame: 17 }); // boucle de 18 frames / 0,72 s à vitesse 1×
 window.persona.dispatch({ type: 'animation', action: 'resume' });
 ```
 
@@ -398,15 +398,31 @@ recentrage propre à chaque frame). Le texte sous le personnage est exclu,
 mais les petites gouttes en haut sont conservées. Les points sont affectés
 aux cibles de la frame suivante, en maximisant d'abord le nombre de pixels
 visibles couverts : cela évite les « trous » causés par plusieurs points
-convergeant inutilement vers le même pixel. La dernière pose retrouve
-exactement les coordonnées de la première pour un raccord sans permutation
-d'identités.
+convergeant inutilement vers le même pixel. La dernière pose reste distincte de la première : la boucle interpole entre
+les deux sans supprimer ni réécrire de frame. La continuité visuelle
+dépend néanmoins de la proximité des silhouettes source.
 
 Les effets temporaires de type `hit` / `reveal` gardent leurs forces physiques
 et prennent momentanément le dessus sur le suivi de pose. La physique et la
 palette procédurales du comportement libre ne sont pas superposées au clip
 idle : l'animation de référence est prioritaire.
 
-Le ZIP ne contient pas de durée par PNG : **80 ms par image est un réglage
+Le ZIP ne contient pas de durée par PNG : **40 ms par image est un réglage
 d'export choisi pour cette version**, et non une information extraite du ZIP.
 Il peut être ajusté via `--frame-duration-ms`, sans changer les images.
+
+
+### V2.4 — Vitesse, densité et stabilisation visuelle
+
+- **43 frames conservées** (aucune déduplication). Vitesse réglable de **0,25× à 3×** ; la vitesse modifie le temps de lecture, et non le nombre de poses. Une boucle normale reste de 1,72 s à 1×.
+- **Nombre de particules simulées** : 2 000, 4 000, 8 000, 12 000 ou 15 886. Le moteur réduit effectivement le tableau des particules actives, reconstruit les liaisons de cohésion et réindexe les cibles des 43 frames depuis leurs identités sources. Un changement de densité repositionne la forme sur la pose actuelle et réinitialise les impulsions physiques. Le moteur conserve la source de 15 886 points en mémoire pour revenir au niveau de qualité initial.
+- **Filtre de stabilisation** : un pixel absent temporairement à cause de l'arrondi et du croisement des particules s'estompe sur environ 35 ms, au lieu de disparaître brutalement. Les couleurs des pixels présents sont légèrement stabilisées. La physique et les 43 poses originales restent inchangées. L'inspecteur de frames et le diagnostic anatomique affichent le rendu non filtré. À vitesse élevée, une courte traîne peut subsister.
+
+Console :
+
+```js
+window.persona.dispatch({ type: 'animation', action: 'speed', value: 1.5 });
+window.persona.dispatch({ type: 'animation', action: 'particle-count', count: 8000 });
+```
+
+- À **3×** sur un écran 60 Hz, les 43 poses demeurent dans l’asset mais certaines peuvent ne pas être affichées individuellement : le lecteur avance en temps réel et interpole entre les poses disponibles.

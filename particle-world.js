@@ -24,6 +24,13 @@ function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
 
+/** Spatially distributed, repeatable selection independent of runtime randomness. */
+function particleSelectionScore(x, y) {
+  let value = Math.imul(x, 0x9e3779b1) ^ Math.imul(y, 0x85ebca6b);
+  value = Math.imul(value ^ (value >>> 16), 0xc2b2ae35);
+  return (value ^ (value >>> 16)) >>> 0;
+}
+
 /** Source aléatoire reproductible pour les tests et les captures de référence. */
 function createSeededRandom(seed) {
   if (!Number.isInteger(seed) || seed < 0 || seed > 0xffffffff) {
@@ -111,18 +118,47 @@ class ParticleWorld {
     this.colorMix = 0;
     this.blinkStartedAt = -1;
     this.nextBlinkAt = 3.8 + this.random() * 3.7;
-    this.particles = decoded.pixels.map(({ x, y, color, eye, region, material, profile, debugColor }) => {
+    this.allParticles = decoded.pixels.map(({ x, y, color, eye, region, material, profile, debugColor }, sourceIndex) => {
       const homeX = x + this.originX;
       const homeY = y + this.originY;
       return {
         homeX, homeY, x: homeX, y: homeY, vx: 0, vy: 0,
-        color, eye, region, material, profile, debugColor, phase: this.random() * Math.PI * 2,
+        color, eye, region, material, profile, debugColor, sourceIndex, phase: this.random() * Math.PI * 2,
       };
     });
+    this.sourceParticleCount = this.allParticles.length;
+    this.particles = this.allParticles;
+    // The ranking is stable across density changes, avoiding random reshuffles.
+    this.particleRank = this.allParticles.map((particle, index) => ({
+      index, score: particleSelectionScore(particle.homeX, particle.homeY),
+    })).sort((a, b) => a.score - b.score || a.index - b.index);
     this.roles = new LocalRoleRegistry(this.anatomy);
     this.cohesionField = new LocalCohesionField(
       this.particles, map.width, map.height, this.originX, this.originY
     );
+  }
+
+  /** Change the actual simulated point count; original identities stay available. */
+  setParticleCount(count) {
+    if (!Number.isInteger(count) || count < 500 || count > this.sourceParticleCount) {
+      throw new RangeError(`Nombre de particules hors limites (500–${this.sourceParticleCount}).`);
+    }
+    if (count === this.particles.length) return false;
+
+    const selected = this.particleRank.slice(0, count).map(item => item.index).sort((a, b) => a - b);
+    this.particles = selected.map(index => this.allParticles[index]);
+    const radius = Math.min(12, Math.max(1, Math.ceil(2 * Math.sqrt(this.sourceParticleCount / count) - 1)));
+    this.cohesionField = new LocalCohesionField(
+      this.particles, this.map.width, this.map.height, this.originX, this.originY,
+      radius, this.occupancy
+    );
+    if (this.anatomy) {
+      const counts = new Uint32Array(this.anatomy.names.length);
+      for (const particle of this.particles) counts[particle.region] += 1;
+      this.anatomy.counts = counts;
+    }
+    this.targetPose = null; // Animation player rebinds the compact poses immediately.
+    return true;
   }
 
   /** A pose only changes the targets; it never replaces or recreates particles. */
