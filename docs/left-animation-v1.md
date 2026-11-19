@@ -212,9 +212,12 @@ node --check src/engine/particle-world.js
 
 **Historique avant correctif :** l'agent signalait 135 réussites sur 137, avec un échec
 de continuité et un échec local lié aux fins de ligne CRLF de `docs/PROJECT.md`.
-Ce document de référence n'a pas été modifié. Les tests ajoutés doivent être vérifiés
-sur le commit de cette branche ; une vérification synthétique du garde-fou a réussi,
-mais elle ne remplace pas la suite Node ni une mesure visuelle navigateur.
+Ce document de référence n'a pas été modifié. Sur le commit
+`3b2e000cec8e732a59c01a589011c8bcaf989aed`, le workflow
+[Animation regression tests](https://github.com/Diuxx/IA-Persona/actions/runs/44611242597/job/135868089224)
+a exécuté **138 tests Node : 138 réussites, 0 échec**, ainsi que les vérifications
+syntaxiques JavaScript. Cela confirme la continuité mesurée dans la simulation,
+mais ne remplace pas une inspection visuelle et des mesures FPS en navigateur.
 
 ## Fichiers modifiés
 
