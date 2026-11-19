@@ -76,3 +76,8 @@ footer { margin-top: 24px; text-align: center; color: #686570; font-size: 11px; 
 .color-group label { margin: 0; }
 input[type=color] { height: 38px; width: 64px; cursor: pointer; padding: 2px; border-radius: 8px; background: #302c35; border: 1px solid #484150; }
 button:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Métriques internes de profilage, sans interférer avec les contrôles. */
+.performance-metrics { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.performance-metrics span { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 10px; color: #9a96a4; }
+.performance-metrics strong { font-weight: 600; color: #d1c5df; font-variant-numeric: tabular-nums; }

@@ -6,6 +6,9 @@ const frame = context.createImageData(world.size, world.size);
 const status = document.querySelector('#status');
 const count = document.querySelector('#particle-count');
 const fps = document.querySelector('#fps');
+const simulationMs = document.querySelector('#simulation-ms');
+const renderingMs = document.querySelector('#rendering-ms');
+const collisions = document.querySelector('#collision-count');
 const pauseButton = document.querySelector('#pause-button');
 const elasticityControl = document.querySelector('#elasticity');
 const elasticityValue = document.querySelector('#elasticity-value');
@@ -24,6 +27,8 @@ let lastTimestamp = null;
 let accumulator = 0;
 let frameCounter = 0;
 let fpsStart = 0;
+let simulationTimeTotal = 0;
+let renderingTimeTotal = 0;
 
 function updateStatus() {
   status.textContent = world.paused ? 'En pause' :
@@ -40,20 +45,38 @@ function render() {
 function animate(timestamp) {
   const dt = lastTimestamp === null ? 0 : Math.min((timestamp - lastTimestamp) / 1000, 0.05);
   lastTimestamp = timestamp;
-  accumulator += world.paused ? 0 : dt;
-  let iterations = 0;
-  while (accumulator >= FIXED_STEP && iterations++ < 3) {
-    world.step(FIXED_STEP);
-    accumulator -= FIXED_STEP;
+
+  const simulationStart = performance.now();
+  if (world.paused) {
+    accumulator = 0;
+  } else {
+    accumulator += dt;
+    let iterations = 0;
+    while (accumulator >= FIXED_STEP && iterations < 3) {
+      world.step(FIXED_STEP);
+      accumulator -= FIXED_STEP;
+      iterations++;
+    }
+    // Ne pas accumuler une dette infinie après une longue suspension de l'onglet.
+    if (iterations === 3) accumulator = 0;
   }
-  if (iterations >= 3) accumulator = 0;
+  const renderStart = performance.now();
   render();
+  const renderEnd = performance.now();
+  simulationTimeTotal += renderStart - simulationStart;
+  renderingTimeTotal += renderEnd - renderStart;
   updateStatus();
 
   frameCounter++;
   if (!fpsStart) fpsStart = timestamp;
-  if (timestamp - fpsStart > 1000) {
-    fps.textContent = String(Math.round(frameCounter * 1000 / (timestamp - fpsStart)));
+  if (timestamp - fpsStart >= 1000) {
+    const samples = frameCounter;
+    fps.textContent = String(Math.round(samples * 1000 / (timestamp - fpsStart)));
+    simulationMs.textContent = (simulationTimeTotal / samples).toFixed(2);
+    renderingMs.textContent = (renderingTimeTotal / samples).toFixed(2);
+    collisions.textContent = world.lastCollisionCount.toLocaleString('fr-FR');
+    simulationTimeTotal = 0;
+    renderingTimeTotal = 0;
     frameCounter = 0;
     fpsStart = timestamp;
   }
@@ -78,6 +101,9 @@ pauseButton.addEventListener('click', () => {
   world.paused = !world.paused;
   pauseButton.textContent = world.paused ? 'Reprendre' : 'Pause';
   pauseButton.setAttribute('aria-pressed', String(world.paused));
+  accumulator = 0;
+  lastTimestamp = null;
+  updateStatus();
 });
 
 canvas.addEventListener('pointerdown', (event) => {
@@ -105,6 +131,12 @@ dispersionControl.addEventListener('input', () => {
 });
 
 accentControl.addEventListener('input', () => world.setAccent(accentControl.value));
+
+document.addEventListener('visibilitychange', () => {
+  // La prochaine frame repart sans rattraper la durée passée en arrière-plan.
+  accumulator = 0;
+  lastTimestamp = null;
+});
 
 if (motionQuery.matches) {
   // Avoid a surprise animation when the OS requests reduced motion.
