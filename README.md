@@ -346,3 +346,9 @@ Pour lancer l'animation, appeler
 
 **Guide détaillé, limites et procédure de régénération :**
 [`docs/TARGET_ANIMATIONS_V2_4.md`](docs/TARGET_ANIMATIONS_V2_4.md).
+
+### Vérifier les dépendances du navigateur
+
+Le prototype charge ses modules par balises `<script>` depuis `index.html`. **Tous les fichiers référencés doivent exister dans la même arborescence** : notamment `role-registry.js`, utilisé par `particle-world.js`. Un fichier absent provoque un `404`, parfois renvoyé en `text/html` par un serveur statique, puis une erreur `LocalRoleRegistry is not a constructor`.
+
+La commande `node --test tests/*.test.cjs` inclut un contrôle des chemins de scripts, des feuilles CSS et des importations locales afin de détecter ce type de régression avant la publication. Pour utiliser Live Server, ouvrir le dossier racine du dépôt, démarrer `index.html`, puis recharger la page après la mise à jour des fichiers.
