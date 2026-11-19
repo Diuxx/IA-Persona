@@ -26,11 +26,6 @@ const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
 const anatomyPreview = document.querySelector('#anatomy-preview');
 const anatomyLegend = document.querySelector('#anatomy-legend');
 const frameOptions = { showAnatomy: false };
-const stateControl = document.querySelector('#behavior-state');
-const energyControl = document.querySelector('#behavior-energy');
-const energyValue = document.querySelector('#behavior-energy-value');
-const voiceControl = document.querySelector('#voice-level');
-const voiceValue = document.querySelector('#voice-level-value');
 const animationStatus = document.querySelector('#animation-status');
 const playIdleButton = document.querySelector('#play-idle');
 const stopIdleButton = document.querySelector('#stop-idle');
@@ -107,14 +102,7 @@ function updateStatus() {
     BEHAVIOR_LABELS[controller.state];
 }
 
-function syncBehaviorControls() {
-  const snapshot = controller.getSnapshot();
-  stateControl.value = snapshot.state;
-  energyControl.value = Math.round(snapshot.energy * 100);
-  energyValue.textContent = `${energyControl.value} %`;
-  voiceControl.value = Math.round(snapshot.voiceLevel * 100);
-  voiceValue.textContent = `${voiceControl.value} %`;
-  voiceControl.disabled = snapshot.state !== 'speaking';
+function syncApplicationControls() {
   refreshRoleLegend();
   syncAnimationControls();
   linkCount.textContent = world.cohesionField.linkCount.toLocaleString('fr-FR');
@@ -146,7 +134,7 @@ function inspectFrame(index) {
   controller.dispatch({ type: 'animation', action: 'seek', frame: index });
   accumulator = 0;
   lastTimestamp = null;
-  syncBehaviorControls();
+  syncApplicationControls();
   pixelStabilizer.reset();
   render();
 }
@@ -217,18 +205,18 @@ document.querySelector('#reset-trigger').addEventListener('click', () => {
   controller.dispatch({ type: 'animation', name: 'idle' });
   frameDirty = true;
   pixelStabilizer.reset();
-  syncBehaviorControls();
+  syncApplicationControls();
 });
 
 playIdleButton.addEventListener('click', () => {
   controller.dispatch({ type: 'animation', name: 'idle' });
   frameDirty = true;
-  syncBehaviorControls();
+  syncApplicationControls();
 });
 stopIdleButton.addEventListener('click', () => {
   controller.dispatch({ type: 'animation', action: 'stop' });
   frameDirty = true;
-  syncBehaviorControls();
+  syncApplicationControls();
 });
 
 idleFrameControl.addEventListener('input', () => inspectFrame(Number(idleFrameControl.value) - 1));
@@ -242,13 +230,13 @@ idleFreezeButton.addEventListener('click', () => {
   controller.dispatch({ type: 'animation', action: 'pause' });
   accumulator = 0;
   lastTimestamp = null;
-  syncBehaviorControls();
+  syncApplicationControls();
 });
 idleResumeButton.addEventListener('click', () => {
   controller.dispatch({ type: 'animation', action: 'resume' });
   accumulator = 0;
   lastTimestamp = null;
-  syncBehaviorControls();
+  syncApplicationControls();
 });
 idleSpeedControl.addEventListener('input', () => {
   controller.dispatch({ type: 'animation', action: 'speed', value: Number(idleSpeedControl.value) });
@@ -264,7 +252,7 @@ particleDensityControl.addEventListener('change', () => {
   controller.dispatch({ type: 'animation', action: 'particle-count', count: particleDensityControl.value === 'auto' ? 'auto' : Number(particleDensityControl.value) });
   pixelStabilizer.reset();
   frameDirty = true;
-  syncBehaviorControls();
+  syncApplicationControls();
   if (targetPlayer.inspecting || world.paused) render();
 });
 idleLoopEndControl.addEventListener('input', () => {
@@ -273,20 +261,6 @@ idleLoopEndControl.addEventListener('input', () => {
   syncAnimationControls();
 });
 
-stateControl.addEventListener('change', () => {
-  controller.setState(stateControl.value);
-  syncBehaviorControls();
-});
-
-energyControl.addEventListener('input', () => {
-  controller.setEnergy(Number(energyControl.value) / 100);
-  energyValue.textContent = `${energyControl.value} %`;
-});
-
-voiceControl.addEventListener('input', () => {
-  controller.setVoiceLevel(Number(voiceControl.value) / 100);
-  voiceValue.textContent = `${voiceControl.value} %`;
-});
 
 pauseButton.addEventListener('click', () => {
   world.paused = !world.paused;
@@ -359,7 +333,7 @@ window.persona = Object.freeze({
       pixelStabilizer.reset();
       particleDensityControl.value = world.densityLimit === null ? 'auto' : String(world.densityLimit);
     }
-    syncBehaviorControls();
+    syncApplicationControls();
     return accepted;
   },
   getSnapshot() { return controller.getSnapshot(); },
@@ -372,7 +346,7 @@ if (!world.paused) {
   // previous static drawing while its particles are still converging.
   world.snapToTargetPose();
 }
-syncBehaviorControls();
+syncApplicationControls();
 render();
 requestAnimationFrame(animate);
 

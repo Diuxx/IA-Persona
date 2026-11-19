@@ -32,7 +32,7 @@ Puis ouvrir `http://localhost:8000`. Aucun package npm ni service n'est nécessa
 | `tests/` | Tests Node sans dépendance npm |
 | `docs/PROJECT.md` | Architecture de référence figée, non modifiable sans autorisation explicite distincte |
 
-L'interface expose uniquement **Animations** et **Réglages**. Les forces ciblées par rôle et leurs mouvements procéduraux expérimentaux ont été retirés de l'interface ; les rôles internes restent disponibles dans le moteur et les commandes publiques validées.
+L'interface expose uniquement **Animations** et **Réglages**. Les mouvements procéduraux de rôle, les sélecteurs manuels d'état (`idle`, `listening`, `thinking`, `speaking`) et les curseurs d'énergie/voix ont été retirés de l'interface. Le contrôleur d'états reste disponible par l'API `window.persona.dispatch()` en vue d'une intégration IA ultérieure.
 
 La V2.5 conserve **43 frames en 1,72 s à 1×**, une population visible dynamique de **13 623 à 16 103 points** et un **pool réutilisable de 16 162**. Le compteur de particules est affiché à côté des FPS.
 

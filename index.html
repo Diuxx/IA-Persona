@@ -49,14 +49,13 @@
         </header>
         <div class="controls-tabs" role="tablist" aria-label="Catégories des contrôles">
           <button type="button" id="tab-animations" role="tab" aria-controls="panel-animations" aria-selected="true" tabindex="0" data-panel-target="panel-animations">Animations</button>
-          
           <button type="button" id="tab-settings" role="tab" aria-controls="panel-settings" aria-selected="false" tabindex="-1" data-panel-target="panel-settings">Réglages</button>
         </div>
         <div class="controls-viewport" id="controls-viewport">
           <section class="controls-panel" id="panel-animations" role="tabpanel" aria-labelledby="tab-animations">
 <div aria-label="Animation par convergence" class="target-animation-controls">
 <p class="eyebrow">ANIMATION CIBLE / IDLE</p>
-<p class="hint">Le GIF sert de référence hors navigateur : les pixels convergent vers les 43 frames cibles interpolées.</p>
+<p class="hint">Les 43 PNG sources sont précompilés en poses cibles ; les particules se déplacent entre ces poses grâce à la simulation.</p>
 <div class="behavior-actions">
 <button id="play-idle" type="button">Jouer l’idle</button>
 <button class="secondary" id="stop-idle" type="button">Arrêter l’idle</button>
@@ -99,28 +98,6 @@
 </div>
 <p aria-live="polite" class="target-animation-status" id="animation-status">Initialisation…</p>
 </div>
-<div aria-label="Comportements du personnage" class="behavior-controls">
-<div class="control-group">
-<label for="behavior-state"><span>État du personnage</span></label>
-<select id="behavior-state">
-<option value="idle">Idle · Repos</option>
-<option value="listening">Listening · Écoute</option>
-<option value="thinking">Thinking · Réflexion</option>
-<option value="speaking">Speaking · Parole</option>
-</select>
-</div>
-<div class="control-group">
-<label for="behavior-energy"><span>Énergie</span><output for="behavior-energy" id="behavior-energy-value">45 %</output></label>
-<input id="behavior-energy" max="100" min="0" step="5" type="range" value="45"/>
-</div>
-<div class="control-group">
-<label for="voice-level"><span>Intensité vocale</span><output for="voice-level" id="voice-level-value">0 %</output></label>
-<input disabled="" id="voice-level" max="100" min="0" step="5" type="range" value="0"/>
-</div>
-
-
-</div>
-            <p class="panel-help">L’animation <strong>idle</strong> utilise le GIF de référence. Les autres états ajustent pour l’instant la physique : leurs animations par frames seront ajoutées avec leurs fichiers sources.</p>
           </section>
           
           <section class="controls-panel" id="panel-settings" role="tabpanel" aria-labelledby="tab-settings" hidden>
