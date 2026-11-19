@@ -1,20 +1,19 @@
 #!/usr/bin/env python3
-"""Convert a reference GIF to temporally matched particle targets.
+"""Compile tracked, fixed-count particle poses from the user's idle PNG sequence.
 
-At runtime, the original 15 886 particles keep their identity. Each frame only
-changes their destination and their black/gray/white shading. The match is done
-once offline with spatial nearest-neighbor transport, not in the browser.
-
-The input has a #666 background and a handwritten "IDLE" legend at the bottom.
-The fixed crop removes only that legend, without re-centering each frame.
+The source archive contains two nearly identical cycles of 21/22 frames.
+Keep frames 1–22 (the last pose closes the loop), so idle doesn't repeat twice.
+Identity matching happens offline; the browser only interpolates targets.
 """
 from __future__ import annotations
 
 import argparse
 import base64
-from pathlib import Path
 import gzip
+import io
+from pathlib import Path
 import re
+import zipfile
 import zlib
 
 import numpy as np
@@ -22,32 +21,61 @@ from PIL import Image
 from scipy.spatial import cKDTree
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / 'assets' / 'animations' / 'idle-reference.gif'
+SOURCE = ROOT / 'assets' / 'animations' / 'idle-frames.zip'
 PIXEL_MAP = ROOT / 'assets' / 'persona-map.js'
 OUTPUT = ROOT / 'assets' / 'animations' / 'idle-targets.js'
 SIZE = 200
-ART_BOUNDS = (0, 25, 190, 235)
-FRAME_STRIDE = 2
+ART_BOUNDS = (0, 8, 190, 225)  # Fixed for ALL frames: keep top droplets + feet, exclude lettering.
 BACKGROUND = 102
+SOURCE_FRAME_COUNT = 43
+LOOP_FRAMES = 22
+FRAME_DURATION_MS = 80
+MAX_SOURCE_BYTES = 1_000_000
 
 
 def classify_pixels(image: Image.Image) -> np.ndarray:
-    """Return 200×200 pixels: 0 background, 1 dark, 2 gray, 3 eye/white."""
+    """Classify shape shades; transparent background/handwritten caption get class 0."""
     crop = image.convert('RGB').crop(ART_BOUNDS)
     factor = min(SIZE / crop.width, SIZE / crop.height)
-    crop = crop.resize((round(crop.width * factor), round(crop.height * factor)), Image.Resampling.NEAREST)
+    size = (round(crop.width * factor), round(crop.height * factor))
+    crop = crop.resize(size, Image.Resampling.NEAREST)
     logical = Image.new('RGB', (SIZE, SIZE), (BACKGROUND,) * 3)
     logical.paste(crop, ((SIZE - crop.width) // 2, (SIZE - crop.height) // 2))
     gray = np.asarray(logical, dtype=np.uint16).mean(axis=2)
     classes = np.zeros((SIZE, SIZE), dtype=np.uint8)
-    classes[(gray >= 33) & (gray <= 93)] = 2
     classes[gray <= 32] = 1
+    classes[(gray >= 33) & (gray <= 93)] = 2
     classes[gray >= 139] = 3
     return classes
 
 
+def read_source_frames(source_path: Path, loop_frames: int) -> tuple[list[np.ndarray], int]:
+    """Read an explicit numbered PNG archive without trusting filenames or zip sizes."""
+    if not source_path.is_file():
+        raise FileNotFoundError(f'Reference not found: {source_path}')
+    with zipfile.ZipFile(source_path) as archive:
+        entries = archive.infolist()
+        expected_names = [f'frame-{i:03d}.png' for i in range(1, SOURCE_FRAME_COUNT + 1)]
+        if [entry.filename for entry in entries] != expected_names:
+            raise ValueError(f'Expected {SOURCE_FRAME_COUNT} ordered frame-NNN.png files')
+        if any(entry.file_size > MAX_SOURCE_BYTES for entry in entries):
+            raise ValueError('PNG reference is too large')
+        if not 2 <= loop_frames <= SOURCE_FRAME_COUNT:
+            raise ValueError('Invalid loop frame count')
+        frames = []
+        for entry in entries[:loop_frames]:
+            with Image.open(io.BytesIO(archive.read(entry))) as img:
+                if img.format != 'PNG' or img.size != (190, 286):
+                    raise ValueError(f'Unexpected PNG shape: {entry.filename}')
+                classes = classify_pixels(img)
+            if np.count_nonzero(classes == 1) < 1000 or not np.any(classes == 3):
+                raise ValueError(f'Frame {entry.filename} has lost the cloud or eye')
+            frames.append(classes)
+    return frames, len(expected_names)
+
+
 def source_groups() -> tuple[np.ndarray, np.ndarray, int]:
-    """Read the same pixel order used by ParticleWorld.decodePixelMap()."""
+    """Use ParticleWorld.decodePixelMap's ordering, independent of the source art size."""
     text = PIXEL_MAP.read_text(encoding='utf-8')
     encoded = re.search(r"runs: '([^']+)'", text)
     if not encoded:
@@ -86,16 +114,11 @@ def first_mapping(source_xy: np.ndarray, target_xy: np.ndarray) -> np.ndarray:
 
 
 def match_next(previous_xy: np.ndarray, new_xy: np.ndarray) -> np.ndarray:
-    """Nearest spatial transport, keeping source identities stable across frames.
-
-    Multi-pass matching avoids the large crossed paths of per-frame sorting.
-    Unavoidable extra points share a target only after all distinct positions
-    have been considered. The mapping is deterministic for a given GIF.
-    """
+    """Deterministic nearest-neighbor transport, prioritizing one point per target."""
     n = len(previous_xy)
     m = len(new_xy)
     if not n or not m:
-        raise ValueError('Every reference frame needs a visible face and body')
+        raise ValueError('Every frame requires visible shape pixels')
     available_sources = np.arange(n, dtype=np.int32)
     available_targets = np.arange(m, dtype=np.int32)
     selected = np.full(n, -1, dtype=np.int32)
@@ -104,10 +127,10 @@ def match_next(previous_xy: np.ndarray, new_xy: np.ndarray) -> np.ndarray:
             break
         tree = cKDTree(new_xy[available_targets])
         k = min(8, len(available_targets))
-        dist, neighbors = tree.query(previous_xy[available_sources], k=k)
+        distances, neighbors = tree.query(previous_xy[available_sources], k=k)
         if k == 1:
-            dist, neighbors = dist[:, None], neighbors[:, None]
-        order = np.argsort(dist, axis=None, kind='stable')
+            distances, neighbors = distances[:, None], neighbors[:, None]
+        order = np.argsort(distances, axis=None, kind='stable')
         source_slots = order // k
         target_slots = order % k
         matched_sources = np.zeros(len(available_sources), dtype=bool)
@@ -126,95 +149,86 @@ def match_next(previous_xy: np.ndarray, new_xy: np.ndarray) -> np.ndarray:
         available_sources = available_sources[~matched_sources]
         available_targets = available_targets[~matched_targets]
     if len(available_sources):
-        # If target has fewer points than source, extra particles may overlap.
-        if not len(available_targets):
-            tree = cKDTree(new_xy)
-            _, closest = tree.query(previous_xy[available_sources])
-            selected[available_sources] = closest
+        if len(available_targets):
+            # Preserve target coverage. Nearest-neighbor fallback alone sends many
+            # particles to the same pixel and leaves visible holes in the body.
+            # Space-filling ordering distributes the remaining IDs across all
+            # as-yet-unoccupied pixels without a costly dense assignment.
+            residual = first_mapping(previous_xy[available_sources].astype(np.uint8), new_xy[available_targets])
+            selected[available_sources] = available_targets[residual]
         else:
-            tree = cKDTree(new_xy[available_targets])
-            _, closest = tree.query(previous_xy[available_sources])
-            selected[available_sources] = available_targets[closest]
+            # More source particles than visible target pixels: controlled overlap.
+            _, closest = cKDTree(new_xy).query(previous_xy[available_sources])
+            selected[available_sources] = closest
     if (selected < 0).any():
-        raise AssertionError('Every source particle must have a destination')
+        raise AssertionError('Missing a target for some particles')
     return selected
 
 
-def compile_animation(source_path: Path, output_path: Path, stride: int = FRAME_STRIDE) -> dict:
-    if not 1 <= stride <= 20:
-        raise ValueError('stride must be between 1 and 20')
-    original_xy, kinds, source_checksum = source_groups()
-    frame_data = []
-    frame_durations = []
-    with Image.open(source_path) as gif:
-        if gif.format != 'GIF' or gif.size != (190, 292) or gif.n_frames < 2:
-            raise ValueError('Reference must be the 190×292 multi-frame idle GIF')
-        original_frames = gif.n_frames
-        total_duration = 0
-        for i in range(original_frames):
-            gif.seek(i)
-            duration = gif.info.get('duration', 40) or 40
-            total_duration += duration
-            if i % stride == 0:
-                classes = classify_pixels(gif.convert('RGB'))
-                if not (classes == 3).any() or not (classes == 1).any():
-                    raise ValueError(f'Frame {i} has lost the eye or body')
-                frame_data.append(classes)
-                frame_durations.append(duration)
-    if not frame_data:
-        raise ValueError('No reference frames were decoded')
+def build_targets(classes_by_frame: list[np.ndarray], source_xy: np.ndarray, kinds: np.ndarray) -> np.ndarray:
+    """Map original particle IDs to target pixels, preserving black/gray and eye groups."""
+    identities = (np.flatnonzero(kinds == 3), np.flatnonzero(kinds != 3))
+    positions_by_frame: list[np.ndarray] = []
+    previous = [None, None]
+    for frame_index, classes in enumerate(classes_by_frame):
+        packed = np.empty((len(source_xy), 3), dtype=np.uint8)
+        for group, (ids, foreground) in enumerate(zip(identities, (classes == 3, np.isin(classes, [1, 2])))):
+            targets = np.argwhere(foreground)[:, ::-1].copy().astype(np.uint8)
+            indices = first_mapping(source_xy[ids], targets) if frame_index == 0 else match_next(previous[group], targets)
+            selected = targets[indices]
+            packed[ids, :2] = selected
+            packed[ids, 2] = classes[selected[:, 1], selected[:, 0]]
+            previous[group] = selected.astype(np.float32)
+        positions_by_frame.append(packed)
+    # Frame 22 is visually the first pose again. Closing at the exact same
+    # positions also prevents an identity shuffle during endless playback.
+    positions_by_frame[-1] = positions_by_frame[0].copy()
+    return np.stack(positions_by_frame)
 
-    all_positions = []
-    identities = [np.flatnonzero(kinds == 3), np.flatnonzero(kinds != 3)]
-    previous_positions = [None, None]
-    for index, classes in enumerate(frame_data):
-        packed = np.empty((len(original_xy), 3), dtype=np.uint8)
-        for group, (particle_indices, criterion) in enumerate(zip(identities, [classes == 3, (classes == 1) | (classes == 2)])):
-            coords_yx = np.argwhere(criterion).astype(np.uint8)
-            targets_xy = coords_yx[:, ::-1].copy()
-            if index == 0:
-                indices = first_mapping(original_xy[particle_indices], targets_xy)
-            else:
-                indices = match_next(previous_positions[group], targets_xy)
-            mapped = targets_xy[indices]
-            packed[particle_indices, :2] = mapped
-            packed[particle_indices, 2] = classes[mapped[:, 1], mapped[:, 0]]
-            previous_positions[group] = mapped.astype(np.float32)
-        all_positions.append(packed)
 
-    # Particle-major order compresses successive coordinates of the same point
-    # extremely well. JS converts this back to frame-major buffers once.
-    data = np.stack(all_positions)
-    particle_major = data.transpose((1, 0, 2)).copy().tobytes()
+def compile_animation(source: Path, destination: Path, loop_frames: int = LOOP_FRAMES,
+                      frame_duration_ms: int = FRAME_DURATION_MS) -> dict:
+    if not 20 <= frame_duration_ms <= 300:
+        raise ValueError('Frame duration should be between 20 and 300 milliseconds')
+    classes_by_frame, source_frames = read_source_frames(source, loop_frames)
+    # The final selected pose must be close enough to first for a seamless cut.
+    first = classes_by_frame[0] > 0
+    last = classes_by_frame[-1] > 0
+    overlap = np.count_nonzero(first & last) / np.count_nonzero(first | last)
+    if overlap < 0.96:
+        raise ValueError('The selected loop does not end near the original idle pose')
+
+    source_xy, kinds, checksum = source_groups()
+    targets = build_targets(classes_by_frame, source_xy, kinds)
+    particle_major = targets.transpose((1, 0, 2)).copy().tobytes()
     compressed = gzip.compress(particle_major, compresslevel=9, mtime=0)
     encoded = base64.b64encode(compressed).decode('ascii')
-    script = '\n'.join([
-        '/** Generated from idle-reference.gif by tools/export_target_animation.py. */',
+    payload = '\n'.join([
+        '/** Generated from idle-frames.zip by tools/export_target_animation.py. */',
         'const PERSONA_IDLE_TARGETS = Object.freeze({',
         "  name: 'idle',", '  width: 200,', '  height: 200,',
-        f'  sourceFrames: {original_frames},',
-        f'  frameCount: {len(frame_data)},',
-        f'  particleCount: {len(original_xy)},',
-        f'  sourceChecksum: {source_checksum},',
-        f'  durationMs: {total_duration},',
+        f'  sourceFrames: {source_frames},',
+        f'  frameCount: {len(classes_by_frame)},',
+        f'  particleCount: {len(source_xy)},',
+        f'  sourceChecksum: {checksum},',
+        f'  durationMs: {len(classes_by_frame) * frame_duration_ms},',
         "  encoding: 'gzip-particle-major-rgb3',",
         f"  payload: '{encoded}',", '});',
-        "if (typeof module !== 'undefined' && module.exports) module.exports = { PERSONA_IDLE_TARGETS };",
-        '',
+        "if (typeof module !== 'undefined' && module.exports) module.exports = { PERSONA_IDLE_TARGETS };", '',
     ])
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(script, encoding='utf8')
-    diff = np.hypot(data[1:, :, 0].astype(float) - data[:-1, :, 0].astype(float),
-                    data[1:, :, 1].astype(float) - data[:-1, :, 1].astype(float))
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(payload, encoding='utf8')
+    travel = np.hypot(np.diff(targets[:, :, 0].astype(float), axis=0),
+                      np.diff(targets[:, :, 1].astype(float), axis=0))
     return {
-        'source_frames': original_frames,
-        'target_frames': len(frame_data),
-        'particle_count': len(original_xy),
-        'duration_ms': total_duration,
-        'mean_step_px': round(float(diff.mean()), 2),
-        'p95_step_px': round(float(np.percentile(diff, 95)), 2),
+        'reference_frames': source_frames,
+        'loop_frames': len(classes_by_frame),
+        'duration_ms': len(classes_by_frame) * frame_duration_ms,
+        'particle_count': len(source_xy),
+        'mean_motion_px': round(float(np.mean(travel)), 2),
+        'p95_motion_px': round(float(np.percentile(travel, 95)), 2),
+        'loop_iou': round(float(overlap), 4),
         'compressed_bytes': len(compressed),
-        'output_bytes': output_path.stat().st_size,
     }
 
 
@@ -222,9 +236,10 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--source', type=Path, default=SOURCE)
     parser.add_argument('--output', type=Path, default=OUTPUT)
-    parser.add_argument('--stride', type=int, default=FRAME_STRIDE)
-    options = parser.parse_args()
-    print(compile_animation(options.source, options.output, options.stride))
+    parser.add_argument('--loop-frames', type=int, default=LOOP_FRAMES)
+    parser.add_argument('--frame-duration-ms', type=int, default=FRAME_DURATION_MS)
+    args = parser.parse_args()
+    print(compile_animation(args.source, args.output, args.loop_frames, args.frame_duration_ms))
 
 
 if __name__ == '__main__':

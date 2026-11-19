@@ -18,11 +18,11 @@ async function createAnimatedWorld() {
   return { world, player, controller };
 }
 
-test('le GIF de 80 images fournit 40 poses réparties sur les 3,2 secondes d’origine', async () => {
+test('les 43 PNG fournissent 22 poses (une boucle) sur 1,76 seconde', async () => {
   const { world, player } = await createAnimatedWorld();
-  assert.equal(PERSONA_IDLE_TARGETS.sourceFrames, 80);
-  assert.equal(PERSONA_IDLE_TARGETS.durationMs, 3200);
-  assert.equal(player.frames.length, 40);
+  assert.equal(PERSONA_IDLE_TARGETS.sourceFrames, 43);
+  assert.equal(PERSONA_IDLE_TARGETS.durationMs, 1760);
+  assert.equal(player.frames.length, 22);
   assert.ok(player.frames.every(frame => frame.length === world.particles.length * 3));
   assert.equal(world.particles.length, 15886);
 });
@@ -58,17 +58,17 @@ test('interpolation : à 40 ms le lecteur vise exactement le milieu des deux pre
 test('la boucle retourne à la première frame sans arrêter l’animation', async () => {
   const { player } = await createAnimatedWorld();
   player.play();
-  player.advance(3.22);
+  player.advance(1.78);
   assert.equal(player.playing, true);
   assert.equal(player.frame, 0);
-  assert.ok(Math.abs(player.getSnapshot().progress - 0.00625) < 1e-6);
+  assert.ok(Math.abs(player.getSnapshot().progress - (0.02 / 1.76)) < 1e-6);
 });
 
-test('une animation non bouclée s’arrête et libère la pose après 3,2 secondes', async () => {
+test('une animation non bouclée s’arrête et libère la pose après 1,76 seconde', async () => {
   const { world, player, controller } = await createAnimatedWorld();
   controller.dispatch({ type: 'animation', name: 'idle', loop: false });
   assert.equal(world.targetPose !== null, true);
-  player.advance(3.3);
+  player.advance(1.8);
   assert.equal(player.playing, false);
   assert.equal(world.targetPose, null);
 });
@@ -186,4 +186,22 @@ test('un gzip dont la sortie dépasse la taille déclarée est rejeté avant all
     () => decodeAnimation({ ...PERSONA_IDLE_TARGETS, payload: overlargePayload }, world),
     /plus volumineuse que prévu/
   );
+});
+
+test('les deux extrémités de la boucle décrivent exactement les mêmes particules', async () => {
+  const { player, world } = await createAnimatedWorld();
+  assert.deepEqual(player.frames.at(-1), player.frames[0]);
+  assert.equal(player.frames.length, 22);
+  assert.equal(world.particles.length, 15886);
+});
+
+test('chaque pose conserve une forme dense et tous les pixels blancs de l’œil', async () => {
+  const { player } = await createAnimatedWorld();
+  for (const [index, frame] of player.frames.entries()) {
+    const visible = new Set();
+    for (let offset = 0; offset < frame.length; offset += 3) {
+      visible.add((frame[offset + 1] << 8) + frame[offset]);
+    }
+    assert.ok(visible.size >= 13_000, `pose ${index + 1}: silhouette trop lacunaire`);
+  }
 });

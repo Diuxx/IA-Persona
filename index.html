@@ -50,7 +50,7 @@
           <section class="controls-panel" id="panel-animations" role="tabpanel" aria-labelledby="tab-animations">
 <div aria-label="Animation par convergence" class="target-animation-controls">
 <p class="eyebrow">ANIMATION CIBLE / IDLE</p>
-<p class="hint">Le GIF sert de référence hors navigateur : les pixels convergent vers 40 poses cibles interpolées.</p>
+<p class="hint">Le GIF sert de référence hors navigateur : les pixels convergent vers 22 poses cibles interpolées.</p>
 <div class="behavior-actions">
 <button id="play-idle" type="button">Jouer l’idle</button>
 <button class="secondary" id="stop-idle" type="button">Arrêter l’idle</button>
@@ -58,9 +58,9 @@
 <div aria-label="Inspection de l'animation idle" class="frame-inspector">
 <div class="frame-inspector-heading">
 <label for="idle-frame">Frame à contrôler</label>
-<output for="idle-frame" id="idle-frame-value">1 / 40</output>
+<output for="idle-frame" id="idle-frame-value">1 / 22</output>
 </div>
-<input id="idle-frame" max="40" min="1" step="1" type="range" value="1"/>
+<input id="idle-frame" max="22" min="1" step="1" type="range" value="1"/>
 <div class="frame-inspector-actions">
 <button aria-label="Frame précédente" class="secondary" id="idle-prev" type="button">←</button>
 <button class="secondary" id="idle-freeze" type="button">Figer</button>
@@ -69,10 +69,10 @@
 </div>
 <div class="frame-inspector-heading">
 <label for="idle-loop-end">Dernière frame de la boucle</label>
-<output for="idle-loop-end" id="idle-loop-end-value">40 / 40</output>
+<output for="idle-loop-end" id="idle-loop-end-value">22 / 22</output>
 </div>
-<input id="idle-loop-end" max="40" min="2" step="1" type="range" value="40"/>
-<p class="frame-inspector-note" id="idle-loop-duration">Boucle de 3,20 s</p>
+<input id="idle-loop-end" max="22" min="2" step="1" type="range" value="22"/>
+<p class="frame-inspector-note" id="idle-loop-duration">Boucle de 1,76 s</p>
 <p class="frame-inspector-note">Glisse le curseur pour figer une frame et relève son numéro pour me demander une correction.</p>
 </div>
 <p aria-live="polite" class="target-animation-status" id="animation-status">Initialisation…</p>

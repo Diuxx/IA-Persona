@@ -346,7 +346,8 @@ class ParticleWorld {
     if (dt === 0) return;
     this.clock += dt;
     this.modeTime += dt;
-    if (this.mode === 'idle' && this.clock >= this.nextBlinkAt) {
+    // Reference idle poses already animate the face; avoid a second automatic blink.
+    if (this.mode === 'idle' && !this.targetPose && this.clock >= this.nextBlinkAt) {
       this.blinkStartedAt = this.clock;
       this.nextBlinkAt = this.clock + 3.8 + this.random() * 3.7;
     }
@@ -358,7 +359,7 @@ class ParticleWorld {
       this.colorMix = 0;
     }
 
-    const blink = this.mode === 'idle' ? this.getBlinkAmount() : 0;
+    const blink = this.mode === 'idle' && !this.targetPose ? this.getBlinkAmount() : 0;
     const drive = this.behaviorDrive;
     const levitation = Math.sin(this.clock * 1.7) * 2.3;
     const sway = Math.sin(this.clock * 0.85) * 1.3 * drive.sway;
@@ -372,7 +373,7 @@ class ParticleWorld {
     const pose = this.targetPose;
     // The reference pose directs the movement; cohesion is still present but
     // must not pull the animated silhouette back toward the static source.
-    const cohesionScale = pose ? 0.25 : 1;
+    const cohesionScale = pose ? 0 : 1; // Reference frames already encode the silhouette.
     this.cohesionField.apply(this.particles,
       this.cohesion * drive.cohesion * this.getRecoveryFactor() * cohesionScale, dt);
     for (let index = 0; index < this.particles.length; index += 1) {
@@ -399,8 +400,9 @@ class ParticleWorld {
         const blend = pose.blend;
         const x = pose.from[offset] + (pose.to[offset] - pose.from[offset]) * blend;
         const y = pose.from[offset + 1] + (pose.to[offset + 1] - pose.from[offset + 1]) * blend;
-        targetX = this.originX + x + (targetX - particle.homeX) * 0.10;
-        targetY = this.originY + y + blinkY + (targetY - particle.homeY - blinkY) * 0.10;
+        // Track the reference, without a second procedural animation on top.
+        targetX = this.originX + x;
+        targetY = this.originY + y;
       }
       const spring = pose ? Math.max(90, this.stiffness * 3) * (material?.spring ?? 1) :
         this.stiffness * (material?.spring ?? 1);
@@ -415,7 +417,7 @@ class ParticleWorld {
       if (pose) {
         // Short visual feedback time keeps the silhouette readable even when
         // two reference poses differ sharply. Hit/reveal temporarily release it.
-        const follow = (1 - Math.exp(-48 * dt)) * this.getRecoveryFactor();
+        const follow = (1 - Math.exp(-72 * dt)) * this.getRecoveryFactor();
         particle.x += (targetX - particle.x) * follow;
         particle.y += (targetY - particle.y) * follow;
         particle.vx *= 1 - follow;
@@ -438,7 +440,7 @@ class ParticleWorld {
     this.lastCollisionCount = 0;
     const mix = this.colorMix;
     const [accentR, accentG, accentB] = this.accent;
-    const blink = this.mode === 'idle' ? this.getBlinkAmount() : 0;
+    const blink = this.mode === 'idle' && !this.targetPose ? this.getBlinkAmount() : 0;
 
     const pose = this.targetPose;
     for (let index = 0; index < this.particles.length; index += 1) {
