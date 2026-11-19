@@ -1,7 +1,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { CohesionField } = require('../cohesion-field.js');
-const { ParticleWorld } = require('../particle-world.js');
+const { CohesionField } = require('../src/engine/cohesion-field.js');
+const { ParticleWorld } = require('../src/engine/particle-world.js');
 const { PERSONA_PIXEL_MAP } = require('../assets/persona-map.js');
 
 function point(x, y, eye = false) {

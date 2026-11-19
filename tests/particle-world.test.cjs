@@ -1,6 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { ParticleWorld, decodePixelMap } = require('../particle-world.js');
+const { ParticleWorld, decodePixelMap } = require('../src/engine/particle-world.js');
 const { PERSONA_PIXEL_MAP } = require('../assets/persona-map.js');
 
 function world(random = () => 0.5) {

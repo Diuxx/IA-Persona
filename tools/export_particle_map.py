@@ -8,7 +8,7 @@ from pathlib import Path
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / 'source.png'
+SOURCE = ROOT / 'assets' / 'source' / 'source.png'
 OUTPUT = ROOT / 'assets' / 'persona-map.js'
 SIZE = 200
 PALETTE = (

@@ -14,7 +14,7 @@ import numpy as np
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / 'source.png'
+SOURCE = ROOT / 'assets' / 'source' / 'source.png'
 PARTICLE_MAP = ROOT / 'assets' / 'persona-map.js'
 DESTINATION = ROOT / 'assets' / 'persona-anatomy.js'
 SOURCE_SIZE = 200

@@ -5,31 +5,36 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="color-scheme" content="dark" />
   <title>IA-Persona — Nuage de particules</title>
-  <link rel="stylesheet" href="./styles.css" />
+  <link rel="stylesheet" href="./src/styles/main.css" />
   <script defer src="./assets/persona-map.js"></script>
-  <script defer src="./cohesion-field.js"></script>
+  <script defer src="./src/engine/cohesion-field.js"></script>
   <script defer src="./assets/persona-anatomy.js"></script>
-  <script defer src="./anatomy.js"></script>
-  <script defer src="./role-registry.js"></script>
-  <script defer src="./particle-world.js"></script>
-  <script defer src="./role-motion-player.js"></script>
-  <script defer src="./behavior-controller.js"></script>
+  <script defer src="./src/engine/anatomy.js"></script>
+  <script defer src="./src/engine/role-registry.js"></script>
+  <script defer src="./src/engine/particle-world.js"></script>
+  
+  <script defer src="./src/controller/behavior-controller.js"></script>
   <script defer src="./assets/animations/idle-targets.js"></script>
-  <script defer src="./target-animation-player.js"></script>
-<script defer src="./pixel-stabilizer.js"></script>
-  <script defer src="./app.js"></script>
+  <script defer src="./src/animation/target-animation-player.js"></script>
+<script defer src="./src/animation/pixel-stabilizer.js"></script>
+  <script defer src="./src/ui/controls.js"></script>
+  <script defer src="./src/ui/metrics.js"></script>
+  <script defer src="./src/app.js"></script>
 </head>
 <body>
   <main class="page">
     <header class="site-header">
       <div class="brand"><span class="brand-mark" aria-hidden="true"></span> IA-PERSONA <span class="brand-separator">/</span> particle lab</div>
-      <span class="version">V2.4 · idle par frames cibles</span>
+      <span class="version">V2.5 · population dynamique</span>
     </header>
     <div class="layout">
       <section class="preview-card" aria-label="Nuage de particules interactif">
         <div class="card-topline">
           <div class="live"><span class="live-dot"></span> <span id="status" role="status">Initialisation…</span></div>
-          <span class="mono"><span id="fps">—</span> FPS</span>
+          <div class="runtime-stats" aria-label="Statistiques en direct">
+            <span class="mono"><strong id="fps">—</strong> FPS</span>
+            <span class="mono"><strong id="particle-count">—</strong> particules</span>
+          </div>
         </div>
         <div class="stage" id="stage">
           <canvas id="mascot" width="400" height="400" tabindex="0" role="button" aria-label="Cliquer sur le nuage pour le disperser. Entrée ou Espace déclenche l'explosion."></canvas>
@@ -44,7 +49,7 @@
         </header>
         <div class="controls-tabs" role="tablist" aria-label="Catégories des contrôles">
           <button type="button" id="tab-animations" role="tab" aria-controls="panel-animations" aria-selected="true" tabindex="0" data-panel-target="panel-animations">Animations</button>
-          <button type="button" id="tab-roles" role="tab" aria-controls="panel-roles" aria-selected="false" tabindex="-1" data-panel-target="panel-roles">Rôles / forces</button>
+          
           <button type="button" id="tab-settings" role="tab" aria-controls="panel-settings" aria-selected="false" tabindex="-1" data-panel-target="panel-settings">Réglages</button>
         </div>
         <div class="controls-viewport" id="controls-viewport">
@@ -117,36 +122,7 @@
 </div>
             <p class="panel-help">L’animation <strong>idle</strong> utilise le GIF de référence. Les autres états ajustent pour l’instant la physique : leurs animations par frames seront ajoutées avec leurs fichiers sources.</p>
           </section>
-          <section class="controls-panel" id="panel-roles" role="tabpanel" aria-labelledby="tab-roles" hidden>
-            <h2>Rôles et mouvements</h2>
-            <p class="panel-help">Cible toutes les particules ou uniquement celles ayant le rôle sélectionné. Les effets s’ajoutent à l’animation courante sans modifier ses couleurs.</p>
-            <div class="role-force-controls">
-<div class="control-group">
-<label for="role-target"><span>Rôle ciblé par les forces</span></label>
-<select id="role-target">
-<option value="">Toutes les particules</option>
-</select>
-</div>
-<div class="behavior-actions">
-<button class="secondary" id="attract-trigger" type="button">Attirer les pixels</button>
-<button class="secondary" id="repel-trigger" type="button">Repousser les pixels</button>
-</div>
-              <div class="control-group role-motion-picker">
-                <label for="role-motion">Animation physique du rôle</label>
-                <select id="role-motion">
-                  <option value="pulse">Pulsation</option>
-                  <option value="wave">Ondulation</option>
-                  <option value="orbit">Rotation</option>
-                </select>
-              </div>
-              <div class="behavior-actions">
-                <button id="role-motion-play" type="button">Animer ce rôle</button>
-                <button id="role-motion-stop" class="secondary" type="button" disabled>Arrêter le mouvement</button>
-              </div>
-              <p class="panel-help" id="role-motion-status" role="status">Aucun mouvement de rôle en cours.</p>
-            </div>
-            <p class="panel-help">Ces trois mouvements sont des effets de particules, pas de nouveaux GIF. Ils servent à expérimenter les rôles ; les animations cibles conservent leur propre lecteur.</p>
-          </section>
+          
           <section class="controls-panel" id="panel-settings" role="tabpanel" aria-labelledby="tab-settings" hidden>
             <h2>Physique et diagnostic</h2>
 <div class="button-group">
@@ -189,17 +165,12 @@
 <input id="accent" type="color" value="#a58afc"/>
 </div>
 </div>
-<div class="metrics">
-<div><strong id="particle-count">—</strong><span>particules visibles</span></div>
-<div><strong>200 × 200</strong><span>grille source</span></div>
-</div>
 <div aria-label="Mesures de performance" class="performance-metrics">
 <span>Simulation <strong id="simulation-ms">—</strong> ms</span>
 <span>Rendu <strong id="rendering-ms">—</strong> ms</span>
 <span>Collisions <strong id="collision-count">—</strong></span>
 <span>Liaisons <strong id="link-count">—</strong></span>
 </div>
-<div class="layer-tags"><span>4 états</span><span>Rôles dynamiques</span><span>Matériaux partagés</span><span>11 zones logiques</span><span>Cohésion locale</span><span>Respiration</span><span>Ressort</span><span>Morphing couleur</span><span>Clignement</span></div>
             <p class="panel-help">Les rôles sont indépendants des matériaux. Les teintes de diagnostic et les effets manuels n’altèrent pas les couleurs des états.</p>
           </section>
         </div>

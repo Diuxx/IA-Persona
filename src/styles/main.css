@@ -64,10 +64,6 @@ footer { margin-top: 24px; text-align: center; color: #686570; font-size: 11px; 
 
 /* Particle POC: the internal 400² buffer keeps the original 200² pixels centered. */
 #mascot { aspect-ratio: 1; width: min(94%, 440px); image-rendering: pixelated; cursor: pointer; }
-.metrics { display: flex; gap: 14px; margin: 0 0 18px; }
-.metrics > div { display: flex; flex-direction: column; gap: 4px; padding: 11px 15px; background: #27232d; border: 1px solid #38323f; border-radius: 10px; }
-.metrics strong { font-size: 19px; color: #e7d9ff; font-variant-numeric: tabular-nums; }
-.metrics span { font-size: 11px; color: #a9a1b2; }
 .controls-stack { margin-top: 24px; display: grid; gap: 20px; }
 .color-group { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
 .color-group label { margin: 0; }
@@ -143,14 +139,8 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .controls-panel .target-animation-controls { margin: 0 0 16px; }
 .controls-panel .behavior-controls { margin: 0 0 16px; }
 .controls-panel .button-group { margin-top: 8px; }
-.controls-panel .metrics { margin-top: 22px; }
 .controls-panel .controls-stack { margin-top: 20px; }
 .panel-help { font-size: 11px; line-height: 1.55; color: #aaa1b0; margin: 12px 0; }
-.role-force-controls { display: grid; gap: 16px; padding: 16px; background: #24202b; border: 1px solid #453b55; border-radius: 12px; }
-.role-force-controls .control-group label { margin-bottom: 10px; }
-.role-force-controls select { width: 100%; background: #312a39; color: #eee8f5; border: 1px solid #50445e; border-radius: 8px; padding: 10px 12px; font: inherit; }
-.role-force-controls select:focus-visible { outline: 2px solid #c4affc; outline-offset: 2px; }
-.role-force-controls .panel-help { margin: 0; }
 @media (max-width: 750px) {
   .controls-card { height: auto; padding: 0; overflow: visible; }
   .controls-viewport { overflow: visible; }
@@ -162,3 +152,8 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .frame-inspector select { width: 100%; min-height: 40px; padding: 10px 12px; border: 1px solid #50445e; border-radius: 8px; color: #eee8f5; background: #312a39; font: inherit; }
 .frame-inspector select:focus-visible { outline: 2px solid #c4affc; outline-offset: 2px; }
 .frame-inspector .control-group label { margin-bottom: 8px; }
+
+/* Live metrics are close to the canvas, with stable numeric widths. */
+.runtime-stats { display: flex; align-items: baseline; justify-content: flex-end; gap: 16px; flex-wrap: wrap; }
+.runtime-stats .mono { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.runtime-stats strong { color: #eee8f5; font-size: 14px; font-weight: 700; }

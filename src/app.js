@@ -6,16 +6,11 @@ let targetPlayer;
 let controller;
 async function initializePersona() {
   targetPlayer = await TargetAnimationPlayer.create(world, PERSONA_IDLE_TARGETS);
-  const roleMotionPlayer = new RoleMotionPlayer(world);
-  controller = new BehaviorController(world, { animationPlayer: targetPlayer, roleMotionPlayer });
+  controller = new BehaviorController(world, { animationPlayer: targetPlayer });
 const frame = context.createImageData(world.size, world.size);
 const pixelStabilizer = new PixelStabilizer(frame.data.length, world.size);
 const status = document.querySelector('#status');
-const count = document.querySelector('#particle-count');
-const fps = document.querySelector('#fps');
-const simulationMs = document.querySelector('#simulation-ms');
-const renderingMs = document.querySelector('#rendering-ms');
-const collisions = document.querySelector('#collision-count');
+const metrics = new PersonaMetrics(document);
 const pauseButton = document.querySelector('#pause-button');
 const elasticityControl = document.querySelector('#elasticity');
 const elasticityValue = document.querySelector('#elasticity-value');
@@ -36,14 +31,7 @@ const energyControl = document.querySelector('#behavior-energy');
 const energyValue = document.querySelector('#behavior-energy-value');
 const voiceControl = document.querySelector('#voice-level');
 const voiceValue = document.querySelector('#voice-level-value');
-const roleTargetControl = document.querySelector('#role-target');
 const animationStatus = document.querySelector('#animation-status');
-const roleMotionControl = document.querySelector('#role-motion');
-const roleMotionPlay = document.querySelector('#role-motion-play');
-const roleMotionStop = document.querySelector('#role-motion-stop');
-const roleMotionStatus = document.querySelector('#role-motion-status');
-const controlViewport = document.querySelector('#controls-viewport');
-const tabButtons = [...document.querySelectorAll('[data-panel-target]')];
 const playIdleButton = document.querySelector('#play-idle');
 const stopIdleButton = document.querySelector('#stop-idle');
 const idleFrameControl = document.querySelector('#idle-frame');
@@ -65,17 +53,9 @@ idleLoopEndControl.max = String(idleFrameCount);
 canvas.width = world.size;
 canvas.height = world.size;
 context.imageSmoothingEnabled = false;
-count.textContent = world.visibleParticleCount.toLocaleString('fr-FR');
+metrics.updateParticleCount(world.visibleParticleCount);
 linkCount.textContent = world.cohesionField.linkCount.toLocaleString('fr-FR');
 document.querySelector('#anatomy-count').textContent = world.anatomy.names.length;
-for (const role of ROLE_NAMES) {
-  if (!Object.values(world.getRoleAssignments()).some(assigned => assigned.includes(role))) continue;
-  const option = document.createElement('option');
-  option.value = role;
-  option.textContent = role;
-  roleTargetControl.append(option);
-}
-
 
 const roleLegendLabels = new Map();
 for (let index = 0; index < world.anatomy.names.length; index += 1) {
@@ -108,10 +88,6 @@ anatomyPreview.addEventListener('change', () => {
 const FIXED_STEP = 1 / 60;
 let lastTimestamp = null;
 let accumulator = 0;
-let frameCounter = 0;
-let fpsStart = 0;
-let simulationTimeTotal = 0;
-let renderingTimeTotal = 0;
 // A paused or inspected pose needs no new pixel buffer until a control changes it.
 let frameDirty = true;
 
@@ -141,15 +117,13 @@ function syncBehaviorControls() {
   voiceControl.disabled = snapshot.state !== 'speaking';
   refreshRoleLegend();
   syncAnimationControls();
-  count.textContent = world.visibleParticleCount.toLocaleString('fr-FR');
   linkCount.textContent = world.cohesionField.linkCount.toLocaleString('fr-FR');
-  updateRoleMotionStatus();
   updateStatus();
 }
 
 function syncAnimationControls() {
   const animation = targetPlayer.getSnapshot();
-  count.textContent = animation.visibleCount.toLocaleString('fr-FR');
+  metrics.updateParticleCount(animation.visibleCount);
   particleDensityControl.value = animation.densityLimit === null ? 'auto' : String(animation.densityLimit);
   idleFrameControl.value = String(animation.frame + 1);
   idleSpeedControl.value = String(animation.speed);
@@ -177,37 +151,7 @@ function inspectFrame(index) {
   render();
 }
 
-function activatePanel(target, focus = false) {
-  for (const tab of tabButtons) {
-    const active = tab.dataset.panelTarget === target;
-    tab.setAttribute('aria-selected', String(active));
-    tab.tabIndex = active ? 0 : -1;
-    document.getElementById(tab.dataset.panelTarget).hidden = !active;
-    if (active && focus) tab.focus();
-  }
-  controlViewport.scrollTop = 0;
-}
-
-for (const [index, tab] of tabButtons.entries()) {
-  tab.addEventListener('click', () => activatePanel(tab.dataset.panelTarget));
-  tab.addEventListener('keydown', event => {
-    const offsets = { ArrowRight: 1, ArrowLeft: -1 };
-    const offset = offsets[event.key];
-    if (offset === undefined && event.key !== 'Home' && event.key !== 'End') return;
-    event.preventDefault();
-    const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabButtons.length - 1 :
-      (index + offset + tabButtons.length) % tabButtons.length;
-    activatePanel(tabButtons[next].dataset.panelTarget, true);
-  });
-}
-
-function updateRoleMotionStatus() {
-  const motion = controller.getSnapshot().roleMotion;
-  roleMotionStop.disabled = !motion.playing;
-  roleMotionStatus.textContent = motion.playing
-    ? `${motion.name} · ${motion.role ?? 'toutes les particules'} · ${Math.round(motion.progress * 100)} %`
-    : 'Aucun mouvement de rôle en cours.';
-}
+initializePersonaTabs();
 
 function render(elapsedSeconds = FIXED_STEP) {
   world.writePixels(frame.data, frameOptions);
@@ -248,25 +192,11 @@ function animate(timestamp) {
   const renderStart = performance.now();
   if (iterations > 0 || frameDirty) render(dt || FIXED_STEP);
   const renderEnd = performance.now();
-  simulationTimeTotal += renderStart - simulationStart;
-  renderingTimeTotal += renderEnd - renderStart;
+  metrics.recordFrame(timestamp, renderStart - simulationStart,
+    renderEnd - renderStart, world.lastCollisionCount);
   updateStatus();
   syncAnimationControls();
-  updateRoleMotionStatus();
 
-  frameCounter++;
-  if (!fpsStart) fpsStart = timestamp;
-  if (timestamp - fpsStart >= 1000) {
-    const samples = frameCounter;
-    fps.textContent = String(Math.round(samples * 1000 / (timestamp - fpsStart)));
-    simulationMs.textContent = (simulationTimeTotal / samples).toFixed(2);
-    renderingMs.textContent = (renderingTimeTotal / samples).toFixed(2);
-    collisions.textContent = world.lastCollisionCount.toLocaleString('fr-FR');
-    simulationTimeTotal = 0;
-    renderingTimeTotal = 0;
-    frameCounter = 0;
-    fpsStart = timestamp;
-  }
   requestAnimationFrame(animate);
 }
 
@@ -356,26 +286,6 @@ energyControl.addEventListener('input', () => {
 voiceControl.addEventListener('input', () => {
   controller.setVoiceLevel(Number(voiceControl.value) / 100);
   voiceValue.textContent = `${voiceControl.value} %`;
-});
-
-document.querySelector('#attract-trigger').addEventListener('click', () => {
-  controller.trigger('field', { x: world.size / 2, y: world.size / 2, radius: 145,
-    strength: -100, ...(roleTargetControl.value ? { role: roleTargetControl.value } : {}) });
-});
-
-document.querySelector('#repel-trigger').addEventListener('click', () => {
-  controller.trigger('field', { x: world.size / 2, y: world.size / 2, radius: 145,
-    strength: 100, ...(roleTargetControl.value ? { role: roleTargetControl.value } : {}) });
-});
-
-roleMotionPlay.addEventListener('click', () => {
-  controller.dispatch({ type: 'role-motion', name: roleMotionControl.value,
-    role: roleTargetControl.value || null });
-  updateRoleMotionStatus();
-});
-roleMotionStop.addEventListener('click', () => {
-  controller.dispatch({ type: 'role-motion', action: 'stop' });
-  updateRoleMotionStatus();
 });
 
 pauseButton.addEventListener('click', () => {

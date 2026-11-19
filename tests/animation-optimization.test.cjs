@@ -1,9 +1,9 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { ParticleWorld } = require('../particle-world.js');
-const { TargetAnimationPlayer } = require('../target-animation-player.js');
-const { BehaviorController } = require('../behavior-controller.js');
-const { PixelStabilizer } = require('../pixel-stabilizer.js');
+const { ParticleWorld } = require('../src/engine/particle-world.js');
+const { TargetAnimationPlayer } = require('../src/animation/target-animation-player.js');
+const { BehaviorController } = require('../src/controller/behavior-controller.js');
+const { PixelStabilizer } = require('../src/animation/pixel-stabilizer.js');
 const { PERSONA_PIXEL_MAP } = require('../assets/persona-map.js');
 const { PERSONA_ANATOMY } = require('../assets/persona-anatomy.js');
 const { PERSONA_IDLE_TARGETS } = require('../assets/animations/idle-targets.js');
