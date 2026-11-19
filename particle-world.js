@@ -3,6 +3,15 @@
  * Sans Canvas, sans image chargée et sans dépendance externe : testable dans Node.js.
  */
 const PARTICLE_STAGE_SIZE = 400;
+const LocalCohesionField = typeof module !== 'undefined' && module.exports
+  ? require('./cohesion-field.js').CohesionField
+  : window.CohesionField;
+
+/** Progression douce de 0 à 1, pour reformer la matière sans rupture. */
+function smoothstep(value) {
+  const t = Math.min(1, Math.max(0, value));
+  return t * t * (3 - 2 * t);
+}
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
@@ -82,6 +91,8 @@ class ParticleWorld {
     this.stiffness = 30;
     this.damping = 8;
     this.dispersion = 1;
+    this.cohesion = 55;
+    this.organicMotion = 1;
     this.accent = [165, 138, 252];
     this.colorMix = 0;
     this.blinkStartedAt = -1;
@@ -94,6 +105,9 @@ class ParticleWorld {
         color, eye, phase: this.random() * Math.PI * 2,
       };
     });
+    this.cohesionField = new LocalCohesionField(
+      this.particles, map.width, map.height, this.originX, this.originY
+    );
   }
 
   setAccent(color) {
@@ -114,6 +128,26 @@ class ParticleWorld {
       throw new RangeError('Dispersion hors limites (0.3–2).');
     }
     this.dispersion = value;
+  }
+
+  setCohesion(value) {
+    if (!Number.isFinite(value) || value < 0 || value > 120) {
+      throw new RangeError('Cohésion hors limites (0–120).');
+    }
+    this.cohesion = value;
+  }
+
+  setOrganicMotion(value) {
+    if (!Number.isFinite(value) || value < 0 || value > 2) {
+      throw new RangeError('Mouvement organique hors limites (0–2).');
+    }
+    this.organicMotion = value;
+  }
+
+  getRecoveryFactor() {
+    if (this.mode === 'idle') return 1;
+    // Les liens se relâchent à l'impact puis reviennent avant la fin de l'animation.
+    return smoothstep((this.modeTime - 0.18) / 1.35);
   }
 
   /** Recherche les particules à leur position ACTUELLE, pas dans la carte de repos. */
@@ -210,20 +244,22 @@ class ParticleWorld {
     const blink = this.mode === 'idle' ? this.getBlinkAmount() : 0;
     const levitation = Math.sin(this.clock * 1.7) * 2.3;
     const sway = Math.sin(this.clock * 0.85) * 1.3;
-    const t = this.clock;
-    const k = this.stiffness;
-    const drag = this.damping;
+    const organic = this.organicMotion;
+    const breathe = Math.sin(this.clock * 1.35) * 0.014 * organic;
+    const centerX = this.originX + this.map.width / 2;
+    const centerY = this.originY + this.map.height / 2;
+    const friction = Math.exp(-this.damping * dt);
 
+    this.cohesionField.apply(this.particles, this.cohesion * this.getRecoveryFactor(), dt);
     for (const particle of this.particles) {
-      // Neighboring pixels share a slow wave: preserve a readable silhouette in idle.
-      const waveX = Math.sin(t * 1.12 + particle.homeY * 0.028) * 1.25;
-      const waveY = Math.sin(t * 0.95 + particle.homeX * 0.035) * 0.70;
+      // Champ de mouvement partagé : les voisins se déplacent avec la même matière.
+      const waveX = Math.sin(this.clock * 1.12 + particle.homeY * 0.028) * 1.25 * organic;
+      const waveY = Math.sin(this.clock * 0.95 + particle.homeX * 0.035) * 0.70 * organic;
       const blinkY = particle.eye ? (this.originY + 131 - particle.homeY) * blink : 0;
-      const targetX = particle.homeX + sway + waveX;
-      const targetY = particle.homeY + levitation + waveY + blinkY;
-      particle.vx += (targetX - particle.x) * k * dt;
-      particle.vy += (targetY - particle.y) * k * dt;
-      const friction = Math.exp(-drag * dt);
+      const targetX = particle.homeX + sway + waveX + (particle.homeX - centerX) * breathe;
+      const targetY = particle.homeY + levitation + waveY + blinkY + (particle.homeY - centerY) * breathe;
+      particle.vx += (targetX - particle.x) * this.stiffness * dt;
+      particle.vy += (targetY - particle.y) * this.stiffness * dt;
       particle.vx *= friction;
       particle.vy *= friction;
       particle.x += particle.vx * dt;

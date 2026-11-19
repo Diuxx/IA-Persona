@@ -15,12 +15,18 @@ const elasticityValue = document.querySelector('#elasticity-value');
 const dispersionControl = document.querySelector('#dispersion');
 const dispersionValue = document.querySelector('#dispersion-value');
 const accentControl = document.querySelector('#accent');
+const cohesionControl = document.querySelector('#cohesion');
+const cohesionValue = document.querySelector('#cohesion-value');
+const organicControl = document.querySelector('#organic-motion');
+const organicValue = document.querySelector('#organic-motion-value');
+const linkCount = document.querySelector('#link-count');
 const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
 
 canvas.width = world.size;
 canvas.height = world.size;
 context.imageSmoothingEnabled = false;
 count.textContent = world.particles.length.toLocaleString('fr-FR');
+linkCount.textContent = world.cohesionField.linkCount.toLocaleString('fr-FR');
 
 const FIXED_STEP = 1 / 60;
 let lastTimestamp = null;
@@ -128,6 +134,16 @@ elasticityControl.addEventListener('input', () => {
 dispersionControl.addEventListener('input', () => {
   world.setDispersion(Number(dispersionControl.value) / 100);
   dispersionValue.textContent = `${dispersionControl.value} %`;
+});
+
+cohesionControl.addEventListener('input', () => {
+  world.setCohesion(Number(cohesionControl.value));
+  cohesionValue.textContent = cohesionControl.value;
+});
+
+organicControl.addEventListener('input', () => {
+  world.setOrganicMotion(Number(organicControl.value) / 100);
+  organicValue.textContent = `${organicControl.value} %`;
 });
 
 accentControl.addEventListener('input', () => world.setAccent(accentControl.value));

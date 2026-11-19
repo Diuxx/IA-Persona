@@ -63,3 +63,60 @@ Validation : `node --test tests/*.test.cjs`, puis `node --check app.js` et `node
 ### Limites conservées
 
 Ce lot ne crée **ni cohésion locale**, ni états `listening` / `thinking` / `speaking` ; ils sont réservés aux prochains lots. La restitution de la silhouette reste pixellisée et le mélange des couleurs lors de collisions est une approximation perceptuelle.
+
+## V2.1 — Physique organique
+
+Les 15 886 points restent indépendants, mais chaque point peut maintenant suivre les
+**déplacements de ses voisins directs**. Le moteur ne charge toujours ni GIF ni spritesheet.
+
+### Algorithme
+
+- `cohesion-field.js` construit **une seule fois** un graphe de voisinage à quatre directions
+  (gauche, droite, haut, bas), à partir des positions d'origine. Deux pixels ne sont liés
+  que s'ils se touchent et appartiennent à la même catégorie œil / corps. Les bords et
+  particules isolées restent libres.
+- À chaque pas, une force pousse la **différence de déplacement par rapport à l'origine**
+  de chaque particule vers la moyenne de ses voisins. L'algorithme ne téléporte aucun pixel,
+  ne crée aucun objet par frame et reste linéaire par rapport au nombre de points et de liens.
+- `ParticleWorld` conserve le ressort individuel et l'amortissement du lot 0. Il applique
+  ensuite un champ d'ondulation lent et une respiration radiale commune à toute la silhouette.
+- Pendant `explode` et `reveal`, la cohésion est d'abord relâchée pour laisser les points
+  s'écarter. Elle revient progressivement sur environ 1,5 seconde, **avant** le retour à `idle`,
+  sans changement brutal de force à la transition.
+
+Ce système est une **approximation de matière souple**, et non une simulation de fluide
+ou de tissu physiquement exacte. Les zones anatomiques détaillées viendront dans le lot 2.
+
+### Réglages
+
+| Paramètre | Valeur initiale | Plage | Effet |
+| --- | ---: | ---: | --- |
+| Élasticité | 30 | 5–70 | Force de rappel de chaque particule vers sa position d'origine |
+| Dispersion | 100 % | 30–200 % | Impulsion de l'explosion / distance de révélation |
+| Cohésion | 55 | 0–120 | Synchronisation des déplacements des points voisins ; 0 reproduit les ressorts indépendants |
+| Respiration organique | 100 % | 0–200 % | Ondulations et dilatation lente autour du centre de la silhouette |
+
+La couleur, le clignement, la pause et le profilage du lot 0 sont conservés.
+
+### Vérifier la V2.1
+
+```bash
+node --test tests/*.test.cjs
+node --check cohesion-field.js
+node --check particle-world.js
+node --check app.js
+python -m http.server 8000
+```
+
+Puis ouvrir `http://localhost:8000`, régler la **cohésion à 0 puis à 120** et
+comparer le retour après une explosion. Les tests couvrent le graphe de voisinage,
+la cohésion désactivée, l'effet du rappel collectif, les transitions, la reproduction
+avec une graine, et la pause.
+
+### Performances et limites
+
+La grille ne change pas de taille (200 × 200 pixels au centre d'un Canvas 400 × 400).
+Les liaisons sont pré-calculées ; les forces locales sont évaluées à 60 Hz.
+Les mesures du panneau restent propres au navigateur et à la machine utilisés.
+Lors d'une dispersion importante, le personnage garde un aspect de poussière temporaire :
+le maintien permanent de masses ou de volumes nommés est volontairement réservé au lot 2.
