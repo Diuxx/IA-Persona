@@ -5,6 +5,7 @@ This file defines **general engineering practices** for people and coding agents
 ## 1. Source of truth and document boundaries
 
 - **Read [`docs/PROJECT.md`](docs/PROJECT.md) before implementing features.** It is the authoritative entry point for the project's vision and architecture.
+- For particle morphing, performance and animation architecture, consult [`docs/technical-information/particle-morphing.md`](docs/technical-information/particle-morphing.md) before changing the engine. This is comparative technical research, not a product specification.
 - Treat both reference documents as **immutable**. Never modify, rename, move, overwrite, or auto-format either without separate, explicit authorization from the project owner.
 - If a new request conflicts with the project reference, explain the conflict and propose a separate change request.
 - Keep implementation notes, technical decisions, experiments, backlogs, and status updates in **separate, editable documents**. Do not present a prototype assumption as an established requirement.

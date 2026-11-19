@@ -4,13 +4,13 @@
  * Future adapters can send the same validated commands as the demo UI.
  */
 const BEHAVIOR_PRESETS = Object.freeze({
-  idle: Object.freeze({ wave: 1, breath: 1, sway: 1, cohesion: 1, agitation: 0, pulse: 0, tint: 0, accent: [165, 138, 252] }),
-  listening: Object.freeze({ wave: 0.58, breath: 0.86, sway: 0.45, cohesion: 1.13, agitation: 0.04, pulse: 0.35, tint: 0.28, accent: [86, 171, 247] }),
-  thinking: Object.freeze({ wave: 1.3, breath: 1.05, sway: 0.6, cohesion: 1.06, agitation: 0.78, pulse: 0.22, tint: 0.48, accent: [171, 125, 253] }),
-  speaking: Object.freeze({ wave: 1.03, breath: 1.1, sway: 0.55, cohesion: 1.02, agitation: 0.22, pulse: 1, tint: 0.34, accent: [105, 218, 232] }),
+  idle: Object.freeze({ wave: 1, breath: 1, sway: 1, cohesion: 1, agitation: 0, pulse: 0 }),
+  listening: Object.freeze({ wave: 0.58, breath: 0.86, sway: 0.45, cohesion: 1.13, agitation: 0.04, pulse: 0.35 }),
+  thinking: Object.freeze({ wave: 1.3, breath: 1.05, sway: 0.6, cohesion: 1.06, agitation: 0.78, pulse: 0.22 }),
+  speaking: Object.freeze({ wave: 1.03, breath: 1.1, sway: 0.55, cohesion: 1.02, agitation: 0.22, pulse: 1 }),
 });
 
-const DRIVE_FIELDS = Object.freeze(['wave', 'breath', 'sway', 'cohesion', 'agitation', 'pulse', 'tint']);
+const DRIVE_FIELDS = Object.freeze(['wave', 'breath', 'sway', 'cohesion', 'agitation', 'pulse']);
 const TRANSITION_DURATION = 0.42;
 const INITIAL_ENERGY = 0.45;
 
@@ -31,21 +31,19 @@ function buildDrive(preset, energy, voiceLevel) {
     cohesion: preset.cohesion,
     agitation: preset.agitation * energy,
     pulse: preset.pulse * (0.25 + energy * 0.3 + voiceLevel * 0.75),
-    tint: preset.tint * (0.7 + energy * 0.3),
-    accent: [...preset.accent],
   };
   return drive;
 }
 
 function blendDrives(previous, next, fraction) {
   const amount = smoothstep(fraction);
-  const result = { accent: previous.accent.map((v, index) => interpolate(v, next.accent[index], amount)) };
+  const result = {};
   for (const key of DRIVE_FIELDS) result[key] = interpolate(previous[key], next[key], amount);
   return result;
 }
 
 class BehaviorController {
-  constructor(world, { transitionDuration = TRANSITION_DURATION } = {}) {
+  constructor(world, { transitionDuration = TRANSITION_DURATION, animationPlayer = null, roleMotionPlayer = null } = {}) {
     if (!world || typeof world.setBehaviorDrive !== 'function' || typeof world.applyField !== 'function') {
       throw new TypeError('Le contrôleur nécessite un moteur de particules compatible.');
     }
@@ -53,6 +51,8 @@ class BehaviorController {
       throw new RangeError('Durée de transition invalide.');
     }
     this.world = world;
+    this.animationPlayer = animationPlayer;
+    this.roleMotionPlayer = roleMotionPlayer;
     this.state = 'idle';
     this.energy = INITIAL_ENERGY;
     this.voiceLevel = 0;
@@ -68,6 +68,7 @@ class BehaviorController {
       throw new RangeError(`Comportement inconnu : ${String(state)}`);
     }
     if (state === this.state) return false;
+    if (state !== 'idle') this.animationPlayer?.stop();
     this.previousDrive = this.drive;
     this.state = state;
     this.transitionElapsed = 0;
@@ -94,6 +95,8 @@ class BehaviorController {
       ? blendDrives(this.previousDrive, target, this.transitionElapsed / this.transitionDuration)
       : target;
     this.world.setBehaviorDrive(this.drive);
+    this.animationPlayer?.advance(deltaSeconds);
+    this.roleMotionPlayer?.advance(deltaSeconds);
   }
 
   trigger(effect, options = {}) {
@@ -114,6 +117,24 @@ class BehaviorController {
     }
   }
 
+  /** A role-based action delegates physical effects to the same bounded engine. */
+  runRoleAction({ role, action, options = {} }) {
+    this.world.roles.validateRole(role);
+    if (action !== 'attract' && action !== 'repel') {
+      throw new RangeError(`Action non prise en charge : ${String(action)}`);
+    }
+    if (!options || typeof options !== 'object' || Array.isArray(options)) {
+      throw new TypeError('Options d’action invalides.');
+    }
+    const strength = options.strength ?? 90;
+    if (!Number.isFinite(strength) || strength < 0 || strength > 280) {
+      throw new RangeError('Intensité d’action hors limites (0–280).');
+    }
+    return this.world.applyField({
+      ...options, role, strength: action === 'attract' ? -strength : strength,
+    });
+  }
+
   /** Explicit allowlist: never execute arbitrary JavaScript from an external adapter. */
   dispatch(command) {
     if (!command || typeof command !== 'object' || Array.isArray(command)) {
@@ -124,11 +145,48 @@ class BehaviorController {
       case 'energy': this.setEnergy(command.value); return true;
       case 'voice': this.setVoiceLevel(command.value); return true;
       case 'effect': return this.trigger(command.name, command.options);
+      case 'roles': return this.world.setRegionRoles(command.region, command.roles);
+      case 'action': return this.runRoleAction(command);
+      case 'animation': return this.controlAnimation(command);
+      case 'role-motion': return this.controlRoleMotion(command);
       default: throw new RangeError(`Commande non prise en charge : ${String(command.type)}`);
     }
   }
 
+  /** Explicit animation allowlist; external actors cannot load arbitrary assets. */
+  controlAnimation(command) {
+    if (!this.animationPlayer) throw new RangeError('Aucune animation cible disponible.');
+    if (command.action === 'stop') return this.animationPlayer.stop();
+    if (command.action === 'pause') return this.animationPlayer.pauseForInspection();
+    if (command.action === 'resume') return this.animationPlayer.resume();
+    if (command.action === 'loop-end') return this.animationPlayer.setLoopEndFrame(command.frame);
+    if (command.action === 'seek') {
+      if (this.state !== 'idle') this.setState('idle');
+      return this.animationPlayer.inspectFrame(command.frame);
+    }
+    if (command.action !== undefined && command.action !== 'play') {
+      throw new RangeError('Action d’animation inconnue.');
+    }
+    if (command.name !== this.animationPlayer.animation.name) {
+      throw new RangeError('Animation cible inconnue.');
+    }
+    if (this.state !== 'idle') this.setState('idle');
+    return this.animationPlayer.play({ loop: command.loop ?? true });
+  }
+
+  /** The same validated route serves manual controls and a future AI adapter. */
+  controlRoleMotion(command) {
+    if (!this.roleMotionPlayer) throw new RangeError('Aucun lecteur de mouvement de rôle disponible.');
+    if (command.action === 'stop') return this.roleMotionPlayer.stop();
+    if (command.action !== undefined && command.action !== 'play') {
+      throw new RangeError('Commande de mouvement de rôle inconnue.');
+    }
+    return this.roleMotionPlayer.play({ name: command.name, role: command.role ?? null });
+  }
+
   reset() {
+    this.roleMotionPlayer?.stop();
+    this.animationPlayer?.stop();
     this.world.reset();
     this.state = 'idle';
     this.energy = INITIAL_ENERGY;
@@ -146,6 +204,8 @@ class BehaviorController {
       voiceLevel: this.voiceLevel,
       effect: this.world.mode,
       paused: this.world.paused,
+      ...(this.animationPlayer ? { animation: this.animationPlayer.getSnapshot() } : {}),
+      ...(this.roleMotionPlayer ? { roleMotion: this.roleMotionPlayer.getSnapshot() } : {}),
     });
   }
 }
