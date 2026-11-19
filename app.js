@@ -2,6 +2,7 @@
 const canvas = document.querySelector('#mascot');
 const context = canvas.getContext('2d', { alpha: true });
 const world = new ParticleWorld(PERSONA_PIXEL_MAP, { anatomy: PERSONA_ANATOMY });
+const controller = new BehaviorController(world);
 const frame = context.createImageData(world.size, world.size);
 const status = document.querySelector('#status');
 const count = document.querySelector('#particle-count');
@@ -24,6 +25,11 @@ const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
 const anatomyPreview = document.querySelector('#anatomy-preview');
 const anatomyLegend = document.querySelector('#anatomy-legend');
 const frameOptions = { showAnatomy: false };
+const stateControl = document.querySelector('#behavior-state');
+const energyControl = document.querySelector('#behavior-energy');
+const energyValue = document.querySelector('#behavior-energy-value');
+const voiceControl = document.querySelector('#voice-level');
+const voiceValue = document.querySelector('#voice-level-value');
 
 canvas.width = world.size;
 canvas.height = world.size;
@@ -55,11 +61,29 @@ let fpsStart = 0;
 let simulationTimeTotal = 0;
 let renderingTimeTotal = 0;
 
+const BEHAVIOR_LABELS = Object.freeze({
+  idle: 'Idle · matière vivante',
+  listening: 'Listening · à l’écoute',
+  thinking: 'Thinking · activité interne',
+  speaking: 'Speaking · pulsation vocale',
+});
+
 function updateStatus() {
   status.textContent = world.paused ? 'En pause' :
     world.mode === 'reveal' ? 'Révélation · couleurs en mouvement' :
     world.mode === 'explode' ? 'Explosion · retour élastique' :
-    'Idle · matière vivante';
+    BEHAVIOR_LABELS[controller.state];
+}
+
+function syncBehaviorControls() {
+  const snapshot = controller.getSnapshot();
+  stateControl.value = snapshot.state;
+  energyControl.value = Math.round(snapshot.energy * 100);
+  energyValue.textContent = `${energyControl.value} %`;
+  voiceControl.value = Math.round(snapshot.voiceLevel * 100);
+  voiceValue.textContent = `${voiceControl.value} %`;
+  voiceControl.disabled = snapshot.state !== 'speaking';
+  updateStatus();
 }
 
 function render() {
@@ -78,6 +102,7 @@ function animate(timestamp) {
     accumulator += dt;
     let iterations = 0;
     while (accumulator >= FIXED_STEP && iterations < 3) {
+      controller.advance(FIXED_STEP);
       world.step(FIXED_STEP);
       accumulator -= FIXED_STEP;
       iterations++;
@@ -109,18 +134,44 @@ function animate(timestamp) {
 }
 
 function triggerExplosion() {
-  world.explode();
+  controller.trigger('hit');
   updateStatus();
 }
 
 function triggerReveal() {
-  world.reveal();
+  controller.trigger('reveal');
   updateStatus();
 }
 
 document.querySelector('#explode-trigger').addEventListener('click', triggerExplosion);
 document.querySelector('#reveal-trigger').addEventListener('click', triggerReveal);
-document.querySelector('#reset-trigger').addEventListener('click', () => world.reset());
+document.querySelector('#reset-trigger').addEventListener('click', () => {
+  controller.reset();
+  syncBehaviorControls();
+});
+
+stateControl.addEventListener('change', () => {
+  controller.setState(stateControl.value);
+  syncBehaviorControls();
+});
+
+energyControl.addEventListener('input', () => {
+  controller.setEnergy(Number(energyControl.value) / 100);
+  energyValue.textContent = `${energyControl.value} %`;
+});
+
+voiceControl.addEventListener('input', () => {
+  controller.setVoiceLevel(Number(voiceControl.value) / 100);
+  voiceValue.textContent = `${voiceControl.value} %`;
+});
+
+document.querySelector('#attract-trigger').addEventListener('click', () => {
+  controller.trigger('field', { x: world.size / 2, y: world.size / 2, radius: 145, strength: -100 });
+});
+
+document.querySelector('#repel-trigger').addEventListener('click', () => {
+  controller.trigger('field', { x: world.size / 2, y: world.size / 2, radius: 145, strength: 100 });
+});
 
 pauseButton.addEventListener('click', () => {
   world.paused = !world.paused;
@@ -136,7 +187,7 @@ canvas.addEventListener('pointerdown', (event) => {
   if (!rect.width || !rect.height) return;
   const x = (event.clientX - rect.left) * canvas.width / rect.width;
   const y = (event.clientY - rect.top) * canvas.height / rect.height;
-  if (world.hitTest(x, y)) world.explode(x, y);
+  if (world.hitTest(x, y)) controller.trigger('hit', { x, y });
 });
 
 canvas.addEventListener('keydown', (event) => {
@@ -179,7 +230,18 @@ if (motionQuery.matches) {
   pauseButton.textContent = 'Reprendre';
 }
 
-updateStatus();
+// Only validated commands are public: an eventual LLM adapter will not access
+// raw simulation arrays or inject executable code.
+window.persona = Object.freeze({
+  dispatch(command) {
+    const accepted = controller.dispatch(command);
+    syncBehaviorControls();
+    return accepted;
+  },
+  getSnapshot() { return controller.getSnapshot(); },
+});
+
+syncBehaviorControls();
 render();
-if (!world.paused) world.reveal();
+if (!world.paused) controller.trigger('reveal');
 requestAnimationFrame(animate);

@@ -11,13 +11,14 @@
   <script defer src="./assets/persona-anatomy.js"></script>
   <script defer src="./anatomy.js"></script>
   <script defer src="./particle-world.js"></script>
+  <script defer src="./behavior-controller.js"></script>
   <script defer src="./app.js"></script>
 </head>
 <body>
   <main class="page">
     <header class="site-header">
       <div class="brand"><span class="brand-mark" aria-hidden="true"></span> IA-PERSONA <span class="brand-separator">/</span> particle lab</div>
-      <span class="version">V2.2 · anatomie</span>
+      <span class="version">V2.3 · comportements</span>
     </header>
     <div class="layout">
       <section class="preview-card" aria-label="Nuage de particules interactif">
@@ -33,7 +34,7 @@
       <aside class="controls-card">
         <p class="eyebrow">PHYSIQUE / MATIÈRE VIVANTE</p>
         <h1>Un nuage<br><span>de pixels.</span></h1>
-        <p class="intro">Les pixels sont maintenant organisés en régions anatomiques. Le corps, l’œil, les gouttes et les pattes possèdent leurs propres mouvements et forces.</p>
+        <p class="intro">Un nuage vivant : ses états d'écoute, de réflexion et de parole modulent les forces, les couleurs et les zones anatomiques, sans spritesheet.</p>
         <div class="metrics">
           <div><strong id="particle-count">—</strong><span>particules</span></div>
           <div><strong>200 × 200</strong><span>grille source</span></div>
@@ -43,6 +44,29 @@
           <span>Rendu <strong id="rendering-ms">—</strong> ms</span>
           <span>Collisions <strong id="collision-count">—</strong></span>
           <span>Liaisons <strong id="link-count">—</strong></span>
+        </div>
+        <div class="behavior-controls" aria-label="Comportements du personnage">
+          <div class="control-group">
+            <label for="behavior-state"><span>État du personnage</span></label>
+            <select id="behavior-state">
+              <option value="idle">Idle · Repos</option>
+              <option value="listening">Listening · Écoute</option>
+              <option value="thinking">Thinking · Réflexion</option>
+              <option value="speaking">Speaking · Parole</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <label for="behavior-energy"><span>Énergie</span><output id="behavior-energy-value" for="behavior-energy">45 %</output></label>
+            <input id="behavior-energy" type="range" min="0" max="100" step="5" value="45" />
+          </div>
+          <div class="control-group">
+            <label for="voice-level"><span>Intensité vocale</span><output id="voice-level-value" for="voice-level">0 %</output></label>
+            <input id="voice-level" type="range" min="0" max="100" step="5" value="0" disabled />
+          </div>
+          <div class="behavior-actions">
+            <button id="attract-trigger" type="button" class="secondary">Attirer les pixels</button>
+            <button id="repel-trigger" type="button" class="secondary">Repousser les pixels</button>
+          </div>
         </div>
         <div class="button-group">
           <button id="reveal-trigger" type="button">Révéler le personnage</button>
@@ -79,10 +103,10 @@
             <input id="accent" type="color" value="#a58afc" />
           </div>
         </div>
-        <p class="hint">Le mouvement est calculé en continu, sans GIF ni spritesheet. Cliquez sur le nuage, ou testez les boutons.</p>
+        <p class="hint">Les états modulent la même matière. Les commandes physiques et l’API <code>window.persona.dispatch()</code> sont préparées pour une future connexion IA, sans connexion réseau dans cette version.</p>
         <div class="divider"></div>
         <p class="eyebrow">MOTEUR</p>
-        <div class="layer-tags"><span>11 zones anatomiques</span><span>Cohésion locale</span><span>Respiration</span><span>Ressort</span><span>Morphing couleur</span><span>Clignement</span></div>
+        <div class="layer-tags"><span>4 états</span><span>Commandes physiques</span><span>11 zones anatomiques</span><span>Cohésion locale</span><span>Respiration</span><span>Ressort</span><span>Morphing couleur</span><span>Clignement</span></div>
       </aside>
     </div>
     <footer>POC expérimental · Source PNG originale préservée · Canvas 2D</footer>

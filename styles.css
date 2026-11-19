@@ -87,3 +87,12 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .anatomy-legend[hidden] { display: none; }
 .anatomy-legend span { display: inline-flex; align-items: center; gap: 6px; font-size: 10px; color: #d0c6dc; }
 .anatomy-legend i { display: inline-block; width: 9px; height: 9px; border-radius: 3px; flex-shrink: 0; }
+
+/* V2.3 — comportements pilotés par une seule source de vérité. */
+.behavior-controls { display: grid; gap: 18px; padding: 17px; border: 1px solid #453b55; border-radius: 12px; background: #24202b; margin: 10px 0 18px; }
+.behavior-controls .control-group { margin: 0; }
+.behavior-controls select { width: 100%; border: 1px solid #50445e; border-radius: 8px; padding: 10px 12px; color: #eee8f5; background: #312a39; font: inherit; }
+.behavior-controls select:focus-visible { outline: 2px solid #c4affc; outline-offset: 2px; }
+.behavior-actions { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; }
+.behavior-actions button { min-width: 0; font-size: 11px; }
+@media (max-width: 420px) { .behavior-actions { grid-template-columns: 1fr; } }

@@ -97,6 +97,11 @@ class ParticleWorld {
     this.dispersion = 1;
     this.cohesion = 55;
     this.organicMotion = 1;
+    // Neutral physics drive, used when ParticleWorld is instantiated without a controller.
+    this.behaviorDrive = {
+      wave: 1, breath: 1, sway: 1, cohesion: 1,
+      agitation: 0, pulse: 0, tint: 0, accent: [165, 138, 252],
+    };
     this.accent = [165, 138, 252];
     this.colorMix = 0;
     this.blinkStartedAt = -1;
@@ -148,6 +153,59 @@ class ParticleWorld {
     this.organicMotion = value;
   }
 
+  setBehaviorDrive(drive) {
+    if (!drive || typeof drive !== 'object' || !Array.isArray(drive.accent) ||
+        drive.accent.length !== 3 || drive.accent.some((channel) =>
+          !Number.isFinite(channel) || channel < 0 || channel > 255)) {
+      throw new TypeError('Paramètres de comportement invalides.');
+    }
+    for (const name of ['wave', 'breath', 'sway', 'cohesion', 'agitation', 'pulse', 'tint']) {
+      const value = drive[name];
+      const maximum = name === 'tint' ? 1 : 4;
+      if (!Number.isFinite(value) || value < 0 || value > maximum) {
+        throw new RangeError(`Comportement invalide : ${name}`);
+      }
+    }
+    this.behaviorDrive = { ...drive, accent: [...drive.accent] };
+  }
+
+  /** One-shot local influence. Can later be driven by a constrained AI command. */
+  applyField({ x, y, radius = 65, strength = 90, region } = {}) {
+    if (!Number.isFinite(x) || x < 0 || x >= this.size ||
+        !Number.isFinite(y) || y < 0 || y >= this.size ||
+        !Number.isFinite(radius) || radius < 4 || radius > 250 ||
+        !Number.isFinite(strength) || Math.abs(strength) > 280) {
+      throw new RangeError('Champ de force hors limites.');
+    }
+    let regionIndex = null;
+    if (region !== undefined) {
+      regionIndex = this.anatomy?.names.indexOf(region) ?? -1;
+      if (regionIndex < 0) throw new RangeError(`Zone anatomique inconnue : ${String(region)}`);
+    }
+    if (this.paused) return false;
+    const radiusSquared = radius * radius;
+    for (const particle of this.particles) {
+      if (regionIndex !== null && particle.region !== regionIndex) continue;
+      const dx = particle.x - x;
+      const dy = particle.y - y;
+      const distanceSquared = dx * dx + dy * dy;
+      if (distanceSquared >= radiusSquared) continue;
+      const distance = Math.sqrt(distanceSquared);
+      const angle = distance > 0.0001 ? Math.atan2(dy, dx) : particle.phase;
+      const impulse = strength * (1 - distance / radius);
+      particle.vx += Math.cos(angle) * impulse;
+      particle.vy += Math.sin(angle) * impulse;
+    }
+    return true;
+  }
+
+  blink() {
+    if (this.paused || this.mode !== 'idle') return false;
+    this.blinkStartedAt = this.clock;
+    this.nextBlinkAt = this.clock + 3.8 + this.random() * 3.7;
+    return true;
+  }
+
   getRecoveryFactor() {
     if (this.mode === 'idle') return 1;
     // Les liens se relâchent à l'impact puis reviennent avant la fin de l'animation.
@@ -169,6 +227,9 @@ class ParticleWorld {
   }
 
   explode(originX = this.size / 2, originY = this.size / 2) {
+    if (!Number.isFinite(originX) || !Number.isFinite(originY)) {
+      throw new RangeError('Origine de l’impact invalide.');
+    }
     if (this.paused) return false;
     this.mode = 'explode';
     this.modeTime = 0;
@@ -246,15 +307,17 @@ class ParticleWorld {
     }
 
     const blink = this.mode === 'idle' ? this.getBlinkAmount() : 0;
+    const drive = this.behaviorDrive;
     const levitation = Math.sin(this.clock * 1.7) * 2.3;
-    const sway = Math.sin(this.clock * 0.85) * 1.3;
-    const organic = this.organicMotion;
-    const breathe = Math.sin(this.clock * 1.35) * 0.014 * organic;
+    const sway = Math.sin(this.clock * 0.85) * 1.3 * drive.sway;
+    const organic = this.organicMotion * drive.wave;
+    const breathe = Math.sin(this.clock * 1.35) * 0.014 * this.organicMotion * drive.breath +
+      Math.sin(this.clock * 11.5) * 0.004 * drive.pulse;
     const centerX = this.originX + this.map.width / 2;
     const centerY = this.originY + this.map.height / 2;
     const baseFriction = Math.exp(-this.damping * dt);
 
-    this.cohesionField.apply(this.particles, this.cohesion * this.getRecoveryFactor(), dt);
+    this.cohesionField.apply(this.particles, this.cohesion * drive.cohesion * this.getRecoveryFactor(), dt);
     for (const particle of this.particles) {
       const profile = particle.profile;
       const wave = profile?.wave ?? 1;
@@ -268,8 +331,12 @@ class ParticleWorld {
       const waveX = Math.sin(this.clock * 1.12 + particle.homeY * 0.028) * 1.25 * organic * wave;
       const waveY = Math.sin(this.clock * 0.95 + particle.homeX * 0.035) * 0.70 * organic * wave;
       const blinkY = particle.eye ? (this.originY + 131 - particle.homeY) * blink : 0;
-      const targetX = particle.homeX + sway + waveX + floatX + (particle.homeX - centerX) * breathe * breath;
-      const targetY = particle.homeY + levitation + waveY + floatY + blinkY + (particle.homeY - centerY) * breathe * breath;
+      // Thinking and speech add a subtle internal vibration without relocating the eye.
+      const agitation = drive.agitation * (particle.eye ? 0.08 : 1) *
+        Math.sin(this.clock * 8 + particle.homeX * 0.14 + particle.homeY * 0.08);
+      const targetX = particle.homeX + sway + waveX + floatX + agitation + (particle.homeX - centerX) * breathe * breath;
+      const targetY = particle.homeY + levitation + waveY + floatY + blinkY - agitation * 0.5 +
+        (particle.homeY - centerY) * breathe * breath;
       const spring = this.stiffness * (profile?.spring ?? 1);
       const friction = profile ? Math.exp(-this.damping * profile.damping * dt) : baseFriction;
       particle.vx += (targetX - particle.x) * spring * dt;
@@ -295,6 +362,8 @@ class ParticleWorld {
     this.lastCollisionCount = 0;
     const mix = this.colorMix;
     const [accentR, accentG, accentB] = this.accent;
+    const drive = this.behaviorDrive;
+    const stateTint = drive.tint * (0.88 + 0.12 * Math.sin(this.clock * 5.6) ** 2);
     const blink = this.mode === 'idle' ? this.getBlinkAmount() : 0;
 
     for (const particle of this.particles) {
@@ -313,9 +382,14 @@ class ParticleWorld {
       const totalWeight = previousWeight + weight;
       const variation = 0.72 + 0.28 * Math.sin(particle.phase + this.clock * 2.4) ** 2;
       const tint = Math.min(1, mix * variation * (particle.profile?.tint ?? 1));
+      // Transient explosion/reveal colors take priority over the current behavior.
+      const behaviorTint = Math.min(1, stateTint * (1 - tint) * (particle.profile?.tint ?? 1));
       let red = r + (accentR - r) * tint;
       let green = g + (accentG - g) * tint;
       let blue = b + (accentB - b) * tint;
+      red += (drive.accent[0] - red) * behaviorTint;
+      green += (drive.accent[1] - green) * behaviorTint;
+      blue += (drive.accent[2] - blue) * behaviorTint;
       if (showAnatomy && particle.profile) {
         [red, green, blue] = particle.profile.debug;
       }

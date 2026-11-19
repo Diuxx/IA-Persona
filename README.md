@@ -167,3 +167,70 @@ Pour changer la forme du personnage, régénérer **d'abord** `persona-map.js`, 
 ### Limites et suite
 
 L'anatomie est une segmentation par zones et non un véritable squelette articulé. Les frontières entre zones dépendent du PNG aplati : certaines zones superposées ne peuvent être reconstruites exactement. La cohésion V2.1 reste réutilisée, mais les liaisons transfrontalières sont volontairement absentes ; la physique reste approximative. Les états IA `listening`, `thinking` et `speaking` sont réservés à la V2.3.
+
+
+## V2.3 — Comportements et commandes physiques
+
+La V2.3 conserve **le même nuage de 15 886 particules et ses 11 régions anatomiques**.
+Elle sépare la logique d'état de la simulation et du rendu :
+
+- `behavior-controller.js` interprète les intentions (`idle`, `listening`, `thinking`, `speaking`), maintient les signaux d'énergie et de volume vocal et interpole leurs paramètres sur **420 ms**.
+- `particle-world.js` conserve l'autorité sur les forces et les positions. Les comportements modulent l'amplitude des ondes, la respiration, les pulsations, la cohésion et la colorisation, sans ajouter de nouvelles animations pré-calculées.
+- `app.js` reste un adaptateur entre l'interface HTML, les commandes du contrôleur et Canvas.
+- Les réactions `hit`, `reveal` et `blink` sont **temporaires** : un impact pendant `speaking` ne change pas le comportement durable. La coloration de réaction reste prioritaire sur celle de l'état courant.
+
+### États prédéfinis
+
+| État | Mouvement | Palette |
+| --- | --- | --- |
+| `idle` | Respiration, flottement et clignement naturel | Originale |
+| `listening` | Stabilité accrue, pulsations douces | Bleu |
+| `thinking` | Ondulation et vibration interne plus intenses | Violet |
+| `speaking` | Pulsations synchronisées avec un signal vocal normalisé | Cyan |
+
+Les curseurs **Énergie** et **Intensité vocale** permettent de simuler des valeurs externes. Le second est activé uniquement en mode `speaking`. Aucun micro, enregistrement ou LLM n'est branché dans cette PR.
+
+### Pilotage programmatique (préparation des futurs agents IA)
+
+La page expose un point d'entrée **limité à des commandes déclaratives validées** :
+
+```javascript
+window.persona.dispatch({ type: 'state', value: 'thinking' });
+window.persona.dispatch({ type: 'energy', value: 0.8 });
+window.persona.dispatch({ type: 'state', value: 'speaking' });
+window.persona.dispatch({ type: 'voice', value: 0.6 });
+
+// Envoyer une impulsion sur les points de l'œil uniquement.
+window.persona.dispatch({
+  type: 'effect',
+  name: 'field',
+  options: { x: 200, y: 200, radius: 110, strength: 70, region: 'eye' },
+});
+
+// Rappels : strength > 0 = répulsion ; strength < 0 = attraction.
+window.persona.dispatch({ type: 'effect', name: 'hit' });
+window.persona.dispatch({ type: 'effect', name: 'blink' });
+const snapshot = window.persona.getSnapshot();
+```
+
+La commande `field` est un **champ de force ponctuel** et non un dessin ni un déplacement absolu. Elle est bornée : position dans la scène 400×400, rayon 4–250, intensité −280 à +280, et `region` doit être le nom d'une région connue. Les valeurs non finies ou commandes non répertoriées sont rejetées avec une erreur explicite. `window.persona` ne donne pas accès aux tableaux de particules ni à l'exécution de code arbitraire.
+
+**Vision à terme :** une IA pourrait être reliée par un adaptateur Node.js/WebSocket émettant des commandes de haut niveau ou des champs de forces ciblés. Elle pourrait combiner ces commandes de manière autonome plutôt que simplement choisir un état. Une évolution ultérieure pourra proposer des masques de zones, une modulation continue des champs et un ordonnanceur d'intentions, avec limites de fréquence, budgets d'énergie et validation des messages. **Cette V2.3 n'établit aucune connexion à une IA ni à un service externe.**
+
+### Vérifications
+
+```bash
+node --test tests/*.test.cjs
+node --check behavior-controller.js
+node --check particle-world.js
+node --check app.js
+python -m http.server 8000
+```
+
+Les nouveaux tests couvrent les états, l'interpolation, le changement d'état en cours de transition, les signaux d'énergie et de parole, les réactions temporaires, les zones ciblées, les champs attractifs/répulsifs, les erreurs de validation, la pause, la reproductibilité et le reset.
+
+### Limites
+
+- Les états produisent des variations de la matière, **pas des expressions faciales dessinées à la main**.
+- Le rendu est toujours effectué sur un Canvas 2D de 400×400 : les particules superposées sont mélangées au lieu d'afficher plusieurs points distincts.
+- Le signal vocal est manuel dans la démo. Le brancher à une vraie sortie audio demande un adaptateur séparé et des règles de cycle de vie.
