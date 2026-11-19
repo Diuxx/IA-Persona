@@ -175,3 +175,15 @@ test('deux simulations avec la même source suivent les mêmes trajectoires', as
       [b.world.particles[index].x, b.world.particles[index].y]);
   }
 });
+
+test('un gzip dont la sortie dépasse la taille déclarée est rejeté avant allocation du résultat', async () => {
+  const { gzipSync } = require('node:zlib');
+  const world = createWorld();
+  const expectedLength = PERSONA_IDLE_TARGETS.particleCount * PERSONA_IDLE_TARGETS.frameCount * 3;
+  const overlargePayload = gzipSync(Buffer.alloc(expectedLength + 65536)).toString('base64');
+
+  await assert.rejects(
+    () => decodeAnimation({ ...PERSONA_IDLE_TARGETS, payload: overlargePayload }, world),
+    /plus volumineuse que prévu/
+  );
+});

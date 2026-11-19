@@ -16,7 +16,10 @@ function adler32(bytes) {
   return ((b << 16) | a) >>> 0;
 }
 
-async function inflateGzip(base64) {
+async function inflateGzip(base64, maxOutputBytes) {
+  if (!Number.isSafeInteger(maxOutputBytes) || maxOutputBytes <= 0) {
+    throw new RangeError('Taille maximale de décompression invalide.');
+  }
   if (typeof base64 !== 'string' || base64.length > MAX_COMPRESSED_BYTES * 2) {
     throw new TypeError('Animation compressée invalide.');
   }
@@ -32,12 +35,36 @@ async function inflateGzip(base64) {
   if (typeof DecompressionStream !== 'function') {
     throw new Error('Ce navigateur ne prend pas en charge DecompressionStream (gzip).');
   }
+  const reader = new Blob([compressed]).stream()
+    .pipeThrough(new DecompressionStream('gzip')).getReader();
+  const chunks = [];
+  let decompressedBytes = 0;
   try {
-    const stream = new Blob([compressed]).stream().pipeThrough(new DecompressionStream('gzip'));
-    return new Uint8Array(await new Response(stream).arrayBuffer());
-  } catch {
-    throw new Error('Décompression de l’animation impossible.');
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      decompressedBytes += value.byteLength;
+      if (decompressedBytes > maxOutputBytes) {
+        throw new RangeError('Animation décompressée plus volumineuse que prévu.');
+      }
+      chunks.push(value);
+    }
+  } catch (error) {
+    await reader.cancel().catch(() => {});
+    if (error instanceof RangeError) throw error;
+    throw new Error('Décompression de l’animation impossible.', { cause: error });
+  } finally {
+    reader.releaseLock();
   }
+
+  // Allocate only after validating the total output size, not for untrusted gzip data.
+  const output = new Uint8Array(decompressedBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    output.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return output;
 }
 
 function validateAnimation(animation, world) {
@@ -61,7 +88,7 @@ async function decodeAnimation(animation, world) {
   const count = animation.particleCount;
   const expectedLength = count * animation.frameCount * 3;
   if (expectedLength > 20_000_000) throw new RangeError('Animation trop volumineuse.');
-  const raw = await inflateGzip(animation.payload);
+  const raw = await inflateGzip(animation.payload, expectedLength);
   if (raw.length !== expectedLength) throw new Error('Nombre de cibles incohérent.');
   const frames = Array.from({ length: animation.frameCount }, () => new Uint8Array(count * 3));
   for (let particleIndex = 0; particleIndex < count; particleIndex += 1) {
