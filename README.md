@@ -57,6 +57,25 @@ pour de futurs agents IA**, sans remplacement du fichier de poses
 Pour le format, les limites et l'ajout d'une future animation, consulter
 [`docs/motion-analysis-v1.md`](docs/motion-analysis-v1.md).
 
+### Décomposition d'une animation PNG source : « gauche »
+
+Le ZIP `assets/animations/left-frames.zip` contient **34 PNG de 374 × 200 pixels**.
+La commande hors navigateur ci-dessous génère le profil
+`assets/animations/analysis/left.motion.json` :
+
+```bash
+python tools/analyze_source_motion.py
+python tools/analyze_source_motion.py --check
+python -m unittest discover -s tests -p 'test_source_motion.py' -v
+```
+
+L'analyse source mesure déplacements, centres de silhouettes, composantes
+détachées et poses quasi identiques. Elle **n'attribue pas d'identifiants
+persistants** ni de durée fictive aux PNG. La dernière transition étant encore
+mobile, l'arrêt souhaité **reste à finaliser** au moment de compiler un clip
+non bouclé. Voir [le diagnostic détaillé](docs/left-motion-decomposition.md).
+
+
 ## Interactions
 
 - **Révéler** : les points colorés apparaissent dispersés, puis retrouvent leur forme et leurs couleurs d'origine.
