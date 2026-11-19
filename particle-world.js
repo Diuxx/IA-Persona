@@ -8,6 +8,21 @@ function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
 
+/** Source aléatoire reproductible pour les tests et les captures de référence. */
+function createSeededRandom(seed) {
+  if (!Number.isInteger(seed) || seed < 0 || seed > 0xffffffff) {
+    throw new RangeError('La graine doit être un entier non signé sur 32 bits.');
+  }
+  let state = seed >>> 0;
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let value = state;
+    value = Math.imul(value ^ (value >>> 15), value | 1);
+    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 function decodePixelMap(map) {
   if (!map || !Number.isInteger(map.width) || !Number.isInteger(map.height) ||
       !Array.isArray(map.palette) || typeof map.runs !== 'string') {
@@ -39,17 +54,25 @@ function decodePixelMap(map) {
 }
 
 class ParticleWorld {
-  constructor(map, { size = PARTICLE_STAGE_SIZE, random = Math.random } = {}) {
-    if (!Number.isInteger(size) || size < Math.max(map.width, map.height)) {
+  constructor(map, { size = PARTICLE_STAGE_SIZE, random, seed } = {}) {
+    if (!map || !Number.isInteger(size) || size < Math.max(map.width, map.height)) {
       throw new RangeError('Zone de simulation trop petite.');
     }
-    if (typeof random !== 'function') throw new TypeError('La source aléatoire doit être une fonction.');
+    if (random !== undefined && seed !== undefined) {
+      throw new TypeError('Choisir soit une source aléatoire, soit une graine.');
+    }
+    if (random !== undefined && typeof random !== 'function') {
+      throw new TypeError('La source aléatoire doit être une fonction.');
+    }
 
     const decoded = decodePixelMap(map);
     this.size = size;
     this.map = map;
-    this.random = random;
+    this.random = seed === undefined ? (random ?? Math.random) : createSeededRandom(seed);
     this.occupancy = decoded.occupancy;
+    // Utilisé uniquement au rendu : réutilisé à chaque frame, sans allocation supplémentaire.
+    this.pixelWeights = new Float32Array(size * size);
+    this.lastCollisionCount = 0;
     this.originX = Math.floor((size - map.width) / 2);
     this.originY = Math.floor((size - map.height) / 2);
     this.clock = 0;
@@ -62,13 +85,13 @@ class ParticleWorld {
     this.accent = [165, 138, 252];
     this.colorMix = 0;
     this.blinkStartedAt = -1;
-    this.nextBlinkAt = 3.8 + random() * 3.7;
+    this.nextBlinkAt = 3.8 + this.random() * 3.7;
     this.particles = decoded.pixels.map(({ x, y, color, eye }) => {
       const homeX = x + this.originX;
       const homeY = y + this.originY;
       return {
         homeX, homeY, x: homeX, y: homeY, vx: 0, vy: 0,
-        color, eye, phase: random() * Math.PI * 2,
+        color, eye, phase: this.random() * Math.PI * 2,
       };
     });
   }
@@ -93,16 +116,18 @@ class ParticleWorld {
     this.dispersion = value;
   }
 
-  hitTest(x, y) {
-    const gridX = Math.round(x - this.originX);
-    const gridY = Math.round(y - this.originY);
-    if (gridX < 0 || gridY < 0 || gridX >= this.map.width || gridY >= this.map.height) return false;
-    for (let row = Math.max(0, gridY - 2); row <= Math.min(this.map.height - 1, gridY + 2); row += 1) {
-      for (let col = Math.max(0, gridX - 2); col <= Math.min(this.map.width - 1, gridX + 2); col += 1) {
-        if (this.occupancy[row * this.map.width + col]) return true;
-      }
-    }
-    return false;
+  /** Recherche les particules à leur position ACTUELLE, pas dans la carte de repos. */
+  hitTest(x, y, radius = 3) {
+    if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(radius) || radius <= 0 ||
+        x < 0 || y < 0 || x >= this.size || y >= this.size) return false;
+
+    const radiusSquared = radius * radius;
+    // Recherche O(n) uniquement lors d'un clic ; aucun index spatial à entretenir par frame.
+    return this.particles.some((particle) => {
+      const dx = particle.x - x;
+      const dy = particle.y - y;
+      return dx * dx + dy * dy <= radiusSquared;
+    });
   }
 
   explode(originX = this.size / 2, originY = this.size / 2) {
@@ -162,6 +187,9 @@ class ParticleWorld {
   }
 
   step(deltaSeconds) {
+    if (!Number.isFinite(deltaSeconds) || deltaSeconds < 0) {
+      throw new RangeError('Le pas de simulation doit être positif et fini.');
+    }
     if (this.paused) return;
     const dt = clamp(deltaSeconds, 0, 1 / 30);
     if (dt === 0) return;
@@ -203,12 +231,18 @@ class ParticleWorld {
     }
   }
 
-  /** Fill a reusable RGBA buffer; every visible pixel remains individually addressable. */
+  /**
+   * Écrit dans le même tampon RGBA à chaque image.
+   * Les particules superposées mélangent leur couleur au lieu de s'écraser.
+   * L'œil reçoit un poids supérieur pour rester lisible lors des déformations.
+   */
   writePixels(buffer) {
     if (!(buffer instanceof Uint8ClampedArray) || buffer.length !== this.size * this.size * 4) {
       throw new RangeError('Tampon RGBA incompatible.');
     }
     buffer.fill(0);
+    this.pixelWeights.fill(0);
+    this.lastCollisionCount = 0;
     const mix = this.colorMix;
     const [accentR, accentG, accentB] = this.accent;
     const blink = this.mode === 'idle' ? this.getBlinkAmount() : 0;
@@ -218,18 +252,33 @@ class ParticleWorld {
       const y = Math.round(particle.y);
       if (x < 0 || y < 0 || x >= this.size || y >= this.size) continue;
 
-      const offset = (y * this.size + x) * 4;
       const [r, g, b, a] = particle.color;
+      const opacity = (a / 255) * (particle.eye ? 1 - blink * 0.98 : 1);
+      if (opacity <= 0) continue;
+
+      const pixelIndex = y * this.size + x;
+      const offset = pixelIndex * 4;
+      const previousWeight = this.pixelWeights[pixelIndex];
+      const weight = opacity * (particle.eye ? 6 : 1);
+      const totalWeight = previousWeight + weight;
       const variation = 0.72 + 0.28 * Math.sin(particle.phase + this.clock * 2.4) ** 2;
       const tint = mix * variation;
-      buffer[offset] = r + (accentR - r) * tint;
-      buffer[offset + 1] = g + (accentG - g) * tint;
-      buffer[offset + 2] = b + (accentB - b) * tint;
-      buffer[offset + 3] = particle.eye ? a * (1 - blink * 0.98) : a;
+      const red = r + (accentR - r) * tint;
+      const green = g + (accentG - g) * tint;
+      const blue = b + (accentB - b) * tint;
+
+      if (previousWeight > 0) this.lastCollisionCount += 1;
+      buffer[offset] = (buffer[offset] * previousWeight + red * weight) / totalWeight;
+      buffer[offset + 1] = (buffer[offset + 1] * previousWeight + green * weight) / totalWeight;
+      buffer[offset + 2] = (buffer[offset + 2] * previousWeight + blue * weight) / totalWeight;
+      const previousOpacity = buffer[offset + 3] / 255;
+      buffer[offset + 3] = 255 * (previousOpacity + opacity * (1 - previousOpacity));
+      this.pixelWeights[pixelIndex] = totalWeight;
     }
   }
+
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { ParticleWorld, decodePixelMap, PARTICLE_STAGE_SIZE };
+  module.exports = { ParticleWorld, decodePixelMap, createSeededRandom, PARTICLE_STAGE_SIZE };
 }
