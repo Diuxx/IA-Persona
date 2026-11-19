@@ -43,7 +43,7 @@ function blendDrives(previous, next, fraction) {
 }
 
 class BehaviorController {
-  constructor(world, { transitionDuration = TRANSITION_DURATION, animationPlayer = null, roleMotionPlayer = null } = {}) {
+  constructor(world, { transitionDuration = TRANSITION_DURATION, animationPlayer = null } = {}) {
     if (!world || typeof world.setBehaviorDrive !== 'function' || typeof world.applyField !== 'function') {
       throw new TypeError('Le contrôleur nécessite un moteur de particules compatible.');
     }
@@ -52,7 +52,6 @@ class BehaviorController {
     }
     this.world = world;
     this.animationPlayer = animationPlayer;
-    this.roleMotionPlayer = roleMotionPlayer;
     this.state = 'idle';
     this.energy = INITIAL_ENERGY;
     this.voiceLevel = 0;
@@ -96,7 +95,6 @@ class BehaviorController {
       : target;
     this.world.setBehaviorDrive(this.drive);
     this.animationPlayer?.advance(deltaSeconds);
-    this.roleMotionPlayer?.advance(deltaSeconds);
   }
 
   trigger(effect, options = {}) {
@@ -148,7 +146,6 @@ class BehaviorController {
       case 'roles': return this.world.setRegionRoles(command.region, command.roles);
       case 'action': return this.runRoleAction(command);
       case 'animation': return this.controlAnimation(command);
-      case 'role-motion': return this.controlRoleMotion(command);
       default: throw new RangeError(`Commande non prise en charge : ${String(command.type)}`);
     }
   }
@@ -176,18 +173,7 @@ class BehaviorController {
     return this.animationPlayer.play({ loop: command.loop ?? true });
   }
 
-  /** The same validated route serves manual controls and a future AI adapter. */
-  controlRoleMotion(command) {
-    if (!this.roleMotionPlayer) throw new RangeError('Aucun lecteur de mouvement de rôle disponible.');
-    if (command.action === 'stop') return this.roleMotionPlayer.stop();
-    if (command.action !== undefined && command.action !== 'play') {
-      throw new RangeError('Commande de mouvement de rôle inconnue.');
-    }
-    return this.roleMotionPlayer.play({ name: command.name, role: command.role ?? null });
-  }
-
   reset() {
-    this.roleMotionPlayer?.stop();
     this.animationPlayer?.stop();
     this.world.reset();
     this.state = 'idle';
@@ -209,7 +195,6 @@ class BehaviorController {
       particleCount: this.world.dynamicPopulation ? this.world.visibleParticleCount : this.world.particles.length,
       ...(this.world.dynamicPopulation ? { particleCapacity: this.world.particles.length } : {}),
       ...(this.animationPlayer ? { animation: this.animationPlayer.getSnapshot() } : {}),
-      ...(this.roleMotionPlayer ? { roleMotion: this.roleMotionPlayer.getSnapshot() } : {}),
     });
   }
 }

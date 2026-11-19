@@ -1,6 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { ParticleWorld, createSeededRandom } = require('../particle-world.js');
+const { ParticleWorld, createSeededRandom } = require('../src/engine/particle-world.js');
 const { PERSONA_PIXEL_MAP } = require('../assets/persona-map.js');
 
 const frameBuffer = (world) => new Uint8ClampedArray(world.size * world.size * 4);

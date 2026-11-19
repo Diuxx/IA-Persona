@@ -1,10 +1,10 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { ParticleWorld } = require('../particle-world.js');
-const { BehaviorController } = require('../behavior-controller.js');
-const { CohesionField } = require('../cohesion-field.js');
-const { RoleRegistry, ROLE_NAMES } = require('../role-registry.js');
-const { MATERIAL_PRESETS, REGION_DEFINITIONS } = require('../anatomy.js');
+const { ParticleWorld } = require('../src/engine/particle-world.js');
+const { BehaviorController } = require('../src/controller/behavior-controller.js');
+const { CohesionField } = require('../src/engine/cohesion-field.js');
+const { RoleRegistry, ROLE_NAMES } = require('../src/engine/role-registry.js');
+const { MATERIAL_PRESETS, REGION_DEFINITIONS } = require('../src/engine/anatomy.js');
 const { PERSONA_PIXEL_MAP } = require('../assets/persona-map.js');
 const { PERSONA_ANATOMY } = require('../assets/persona-anatomy.js');
 

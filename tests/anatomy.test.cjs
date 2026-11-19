@@ -1,8 +1,8 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { ParticleWorld, decodePixelMap } = require('../particle-world.js');
-const { CohesionField } = require('../cohesion-field.js');
-const { assignAnatomy, ANATOMY_PROFILES } = require('../anatomy.js');
+const { ParticleWorld, decodePixelMap } = require('../src/engine/particle-world.js');
+const { CohesionField } = require('../src/engine/cohesion-field.js');
+const { assignAnatomy, ANATOMY_PROFILES } = require('../src/engine/anatomy.js');
 const { PERSONA_PIXEL_MAP } = require('../assets/persona-map.js');
 const { PERSONA_ANATOMY } = require('../assets/persona-anatomy.js');
 

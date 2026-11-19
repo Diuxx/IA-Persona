@@ -2,15 +2,16 @@
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 
-root = Path(__file__).resolve().parent
+root = Path(__file__).resolve().parents[1]
 html = (root / 'index.html').read_text(encoding='utf8')
-html = html.replace('<link rel="stylesheet" href="./styles.css" />',
-                    '<style>' + (root / 'styles.css').read_text(encoding='utf8') + '</style>')
+html = html.replace('<link rel="stylesheet" href="./src/styles/main.css" />',
+                    '<style>' + (root / 'src/styles/main.css').read_text(encoding='utf8') + '</style>')
 paths = [
-    'assets/persona-map.js', 'cohesion-field.js', 'assets/persona-anatomy.js',
-    'anatomy.js', 'role-registry.js', 'particle-world.js', 'role-motion-player.js',
-    'behavior-controller.js', 'assets/animations/idle-targets.js',
-    'target-animation-player.js', 'pixel-stabilizer.js', 'app.js',
+    'assets/persona-map.js', 'src/engine/cohesion-field.js', 'assets/persona-anatomy.js',
+    'src/engine/anatomy.js', 'src/engine/role-registry.js', 'src/engine/particle-world.js',
+    'src/controller/behavior-controller.js', 'assets/animations/idle-targets.js',
+    'src/animation/target-animation-player.js', 'src/animation/pixel-stabilizer.js',
+    'src/ui/controls.js', 'src/ui/metrics.js', 'src/app.js',
 ]
 for path in paths:
     tag = f'<script defer src="./{path}"></script>'
@@ -57,7 +58,8 @@ with sync_playwright() as playwright:
     assert page.evaluate('targetPlayer.playing && !targetPlayer.inspecting') is True
     assert '2' not in page.locator('#idle-speed-value').inner_text()
     assert errors == [], errors
-    screenshot_path = root / 'optimization-preview.png'
+    screenshot_path = root / 'assets' / 'diagnostics' / 'optimization-preview.png'
+    screenshot_path.parent.mkdir(parents=True, exist_ok=True)
     page.screenshot(path=str(screenshot_path))
     print({'frames': 43, 'speed': '0.5x - 2x', 'density': '4000 -> auto',
            'frame43': 'exact', 'filter': 'active only during playback',

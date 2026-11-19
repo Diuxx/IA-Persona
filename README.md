@@ -12,16 +12,31 @@ python -m http.server 8000
 
 Puis ouvrir `http://localhost:8000`. Aucun package npm ni service n'est nécessaire.
 
-## Architecture
+## Architecture actuelle (V2.5)
 
-- `source.png` : dessin original, conservé intact.
-- `tools/export_particle_map.py` : conversion *hors navigateur* en un tableau RLE de pixels colorés de taille 200×200 (Pillow nécessaire pour régénérer).
-- `assets/persona-map.js` : carte statique des pixels visibles ; **aucune lecture `getImageData`** ni problème CORS côté navigateur.
-- `particle-world.js` : simulation pure des forces, animations et couleurs, sans DOM.
-- `app.js` : Canvas 2D, boutons, contrôles et rafraîchissement en pas fixe 60 Hz.
-- `tests/particle-world.test.cjs` : tests de la simulation.
+`index.html` est le seul fichier d'exécution à la racine. `README.md` et `AGENTS.md` restent à la racine pour GitHub et les agents.
 
-La carte est classée en quatre types de pixels : transparent, nuage noir, masses grises et œil clair. Les pixels sont animés individuellement mais partagent un champ de mouvement cohérent. La résolution de la **forme source est 200×200**, au centre d'un Canvas de **400×400** pour laisser de la place à l'explosion.
+| Répertoire | Responsabilité |
+| --- | --- |
+| `src/app.js` | Orchestration du Canvas, des commandes et de la boucle à pas fixe 60 Hz |
+| `src/engine/` | Simulation des particules, cohésion, anatomie, rôles internes |
+| `src/animation/` | Lecture des poses cibles et stabilisation visuelle |
+| `src/controller/` | Interprétation, validation et transition des intentions |
+| `src/ui/` | Onglets, FPS, population de particules et diagnostics |
+| `src/styles/main.css` | Apparence de la page |
+| `assets/` | Pixels précompilés, GIF d'exemple et images sources intactes |
+| `assets/source/source.png` | Illustration originale, utilisée uniquement hors navigateur |
+| `assets/animations/idle-frames.zip` | Les 43 PNG sources, inchangés |
+| `assets/animations/idle-targets.js` | Données compilées de l'idle V2.5 |
+| `tools/` | Exporteurs Python et test navigateur |
+| `tests/` | Tests Node sans dépendance npm |
+| `docs/PROJECT.md` | Architecture de référence figée, non modifiable sans autorisation explicite distincte |
+
+L'interface expose uniquement **Animations** et **Réglages**. Les mouvements procéduraux de rôle, les sélecteurs manuels d'état (`idle`, `listening`, `thinking`, `speaking`) et les curseurs d'énergie/voix ont été retirés de l'interface. Le contrôleur d'états reste disponible par l'API `window.persona.dispatch()` en vue d'une intégration IA ultérieure.
+
+La V2.5 conserve **43 frames en 1,72 s à 1×**, une population visible dynamique de **13 623 à 16 103 points** et un **pool réutilisable de 16 162**. Le compteur de particules est affiché à côté des FPS.
+
+> Les sections historiques V2–V2.5 ci-dessous documentent les étapes précédentes : certains anciens chemins et contrôles n'existent plus à l'emplacement indiqué. Utiliser cette section et `docs/PROJECT.md` pour l'architecture courante.
 
 ## Interactions
 
@@ -34,13 +49,17 @@ La carte est classée en quatre types de pixels : transparent, nuage noir, masse
 
 Les particules ne sont jamais recréées à chaque frame : seuls leurs états et le tampon d'affichage RGBA sont mis à jour. Pour une très grosse quantité de pixels ou des appareils peu puissants, une solution WebGL pourra être évaluée ultérieurement.
 
-## Tests
+## Vérifications actuelles
 
 ```bash
 node --test tests/*.test.cjs
-node --check app.js
-node --check particle-world.js
+node --check src/app.js
+node --check src/engine/particle-world.js
+node --check src/animation/target-animation-player.js
+node --check src/controller/behavior-controller.js
+python tools/verify_optimizations_browser.py  # nécessite Chromium + Playwright
 ```
+
 
 ## Limites
 
@@ -58,7 +77,7 @@ Le moteur garde les **15 886 particules** et les animations existantes. Les corr
 - **Simulation fiabilisée :** pas de temps invalides rejetés ; pas de rattrapage après une pause ou un onglet masqué ; transitions `explode` / `reveal` / retour à `idle` couvertes par des tests.
 - **Profilage :** le panneau affiche FPS, temps CPU moyen par frame de la simulation, temps moyen du rendu et nombre de collisions au dernier rendu. Les chiffres sont indicatifs et dépendent de la machine et du navigateur.
 
-Validation : `node --test tests/*.test.cjs`, puis `node --check app.js` et `node --check particle-world.js`. La vérification visuelle peut être effectuée en ouvrant la page et en déclenchant `Explosion`, `Révéler`, `Pause` et un clic sur le personnage en mouvement.
+Validation : `node --test tests/*.test.cjs`, puis `node --check src/app.js` et `node --check src/engine/particle-world.js`. La vérification visuelle peut être effectuée en ouvrant la page et en déclenchant `Explosion`, `Révéler`, `Pause` et un clic sur le personnage en mouvement.
 
 ### Limites conservées
 
@@ -102,9 +121,9 @@ La couleur, le clignement, la pause et le profilage du lot 0 sont conservés.
 
 ```bash
 node --test tests/*.test.cjs
-node --check cohesion-field.js
-node --check particle-world.js
-node --check app.js
+node --check src/engine/cohesion-field.js
+node --check src/engine/particle-world.js
+node --check src/app.js
 python -m http.server 8000
 ```
 
@@ -153,10 +172,10 @@ Le bouton **Visualiser les zones** colore provisoirement ces régions, affiche l
 python tools/export_particle_map.py
 python tools/export_anatomy.py
 node --test tests/*.test.cjs
-node --check anatomy.js
-node --check particle-world.js
-node --check cohesion-field.js
-node --check app.js
+node --check src/engine/anatomy.js
+node --check src/engine/particle-world.js
+node --check src/engine/cohesion-field.js
+node --check src/app.js
 python -m http.server 8000
 ```
 
@@ -221,9 +240,9 @@ La commande `field` est un **champ de force ponctuel** et non un dessin ni un d�
 
 ```bash
 node --test tests/*.test.cjs
-node --check behavior-controller.js
-node --check particle-world.js
-node --check app.js
+node --check src/controller/behavior-controller.js
+node --check src/engine/particle-world.js
+node --check src/app.js
 python -m http.server 8000
 ```
 
@@ -317,12 +336,12 @@ anatomique indique les rôles de chaque région et se met à jour lors des réaf
 
 ```bash
 node --test tests/*.test.cjs
-node --check anatomy.js
-node --check role-registry.js
-node --check cohesion-field.js
-node --check particle-world.js
-node --check behavior-controller.js
-node --check app.js
+node --check src/engine/anatomy.js
+node --check src/engine/role-registry.js
+node --check src/engine/cohesion-field.js
+node --check src/engine/particle-world.js
+node --check src/controller/behavior-controller.js
+node --check src/app.js
 ```
 
 ## V2.4 — Animations par frames cibles : `idle`
