@@ -175,18 +175,18 @@ La V2.3 conserve **le même nuage de 15 886 particules et ses 11 régions anatom
 Elle sépare la logique d'état de la simulation et du rendu :
 
 - `behavior-controller.js` interprète les intentions (`idle`, `listening`, `thinking`, `speaking`), maintient les signaux d'énergie et de volume vocal et interpole leurs paramètres sur **420 ms**.
-- `particle-world.js` conserve l'autorité sur les forces et les positions. Les comportements modulent l'amplitude des ondes, la respiration, les pulsations, la cohésion sans recoloration par état, sans ajouter de nouvelles animations pré-calculées.
+- `particle-world.js` conserve l'autorité sur les forces et les positions. Les comportements modulent l'amplitude des ondes, la respiration, les pulsations, la cohésion et la colorisation, sans ajouter de nouvelles animations pré-calculées.
 - `app.js` reste un adaptateur entre l'interface HTML, les commandes du contrôleur et Canvas.
-- Les réactions `hit`, `reveal` et `blink` sont **temporaires** : un impact pendant `speaking` ne change pas le comportement durable. Les états ne modifient pas la couleur ; les effets manuels peuvent encore utiliser une teinte explicite.
+- Les réactions `hit`, `reveal` et `blink` sont **temporaires** : un impact pendant `speaking` ne change pas le comportement durable. La coloration de réaction reste prioritaire sur celle de l'état courant.
 
 ### États prédéfinis
 
-| État | Mouvement | Couleurs |
+| État | Mouvement | Palette |
 | --- | --- | --- |
-| `idle` | Respiration, flottement et clignement naturel | Source originale |
-| `listening` | Stabilité accrue, pulsations douces | Source originale |
-| `thinking` | Ondulation et vibration interne plus intenses | Source originale |
-| `speaking` | Pulsations synchronisées avec un signal vocal normalisé | Source originale |
+| `idle` | Respiration, flottement et clignement naturel | Originale |
+| `listening` | Stabilité accrue, pulsations douces | Bleu |
+| `thinking` | Ondulation et vibration interne plus intenses | Violet |
+| `speaking` | Pulsations synchronisées avec un signal vocal normalisé | Cyan |
 
 Les curseurs **Énergie** et **Intensité vocale** permettent de simuler des valeurs externes. Le second est activé uniquement en mode `speaking`. Aucun micro, enregistrement ou LLM n'est branché dans cette PR.
 
@@ -327,14 +327,19 @@ node --check app.js
 
 ## V2.4 — Animations par frames cibles : `idle`
 
-L'animation idle du GIF fourni a été importée comme **40 poses sur 3,2 s**.
-Les 15 886 particules conservent leur identité, leurs rôles et leurs matériaux,
-mais convergent vers les formes successives du dessin. Les couleurs noir/gris/blanc
-sont également pilotées par ces poses. Le GIF n'est jamais affiché directement.
+L'animation idle est désormais compilée depuis les **43 PNG fournis dans
+`idle-frames.zip`**. Ces PNG contiennent deux cycles quasi identiques : le premier
+se termine à la frame 22. L'animation utilise **22 poses sur 1,76 s** (80 ms par
+pose), avec une fermeture parfaite des destinations entre dernière et première
+pose. Les **15 886 particules** conservent leurs identités, rôles et matériaux.
+Les volumes, gouttes, pattes et teintes noir/gris/blanc suivent directement les
+poses d'origine, sans seconde ondulation ou clignement procédural.
 
-- `assets/animations/idle-reference.gif` : référence source de 80 frames.
-- `tools/export_target_animation.py` : segmentation, correspondance temporelle
-  entre pixels et export GZIP (Pillow, NumPy, SciPy hors navigateur).
+- `assets/animations/idle-frames.zip` : **source active**, 43 PNG numérotés, non altérés.
+- `assets/animations/idle-reference.gif` : ancienne référence conservée pour l'historique.
+- `tools/export_target_animation.py` : cadrage commun à toutes les poses pour
+  préserver les gouttes supérieures et les pattes, exclusion du texte `IDLE`,
+  correspondance temporelle et export GZIP (Pillow, NumPy et SciPy hors navigateur).
 - `assets/animations/idle-targets.js` : poses précompilées et compressées.
 - `target-animation-player.js` : décodage, horloge, interpolation, boucle, arrêt.
 - `particle-world.js` : suit les positions cibles dans le solveur physique.
@@ -353,35 +358,21 @@ Le prototype charge ses modules par balises `<script>` depuis `index.html`. **To
 
 La commande `node --test tests/*.test.cjs` inclut un contrôle des chemins de scripts, des feuilles CSS et des importations locales afin de détecter ce type de régression avant la publication. Pour utiliser Live Server, ouvrir le dossier racine du dépôt, démarrer `index.html`, puis recharger la page après la mise à jour des fichiers.
 
-### V2.4 — Correction : pas de couleur attribuée aux comportements
-
-Les états `idle`, `listening`, `thinking`, `speaking` pilotent
-exclusivement les **forces et les mouvements** (ondes, agitation, respiration,
-cohésion, pulsation). Ils ne définissent plus de palette, d'accent ou de teinte.
-
-Le lecteur d'animation conserve les **couleurs de chaque pose cible** du GIF,
-qui font partie du dessin de référence. Les effets manuels `explode` et
-`reveal` gardent leur paramètre de teinte, indépendant des états.
-Le mode « Visualiser les zones » conserve ses couleurs temporaires de diagnostic.
-
-Les futurs états devront être représentés par leurs propres animations cibles,
-comme `idle`, plutôt que par un changement automatique de palette.
-
 
 ### V2.4 — Inspecteur de frames idle
 
-L'animation source contient 40 poses cibles sur 3,2 s (80 ms par pose).
+L'animation source contient 22 poses cibles sur 1,76 s (80 ms par pose).
 La page permet maintenant de **figer la frame actuelle**, d'avancer ou reculer
 image par image et de choisir la **dernière frame** de la boucle sans modifier
-l'asset. Les numéros affichés vont de **1 à 40** ; l'API JavaScript utilise des
-indices **0 à 39**. La sélection affiche la pose de référence **exacte**, sans
+l'asset. Les numéros affichés vont de **1 à 22** ; l'API JavaScript utilise des
+indices **0 à 21**. La sélection affiche la pose de référence **exacte**, sans
 attendre le retour élastique des particules. La simulation est temporairement
 figée pendant l'inspection mais elle reprend normalement après « Reprendre ».
 
 Exemples depuis la console :
 
 ```js
-window.persona.dispatch({ type: 'animation', action: 'seek', frame: 17 }); // affiche la frame 18/40
+window.persona.dispatch({ type: 'animation', action: 'seek', frame: 17 }); // affiche la frame 18/22
 window.persona.dispatch({ type: 'animation', action: 'loop-end', frame: 17 }); // boucle de 18 frames / 1,44 s
 window.persona.dispatch({ type: 'animation', action: 'resume' });
 ```
@@ -392,40 +383,30 @@ Quand la boucle est raccourcie, son retour de la dernière frame vers la premiè
 peut ne pas être fluide si ces silhouettes diffèrent : la version finale pourra
 ré-exporter un raccord artistique adapté au numéro choisi.
 
-### V2.4 — Panneau de pilotage compact et animations de rôles
+### Corrections de la source idle (PNG)
 
-Sur ordinateur, le panneau de droite conserve **exactement la hauteur de la
-prévisualisation**, y compris son bandeau supérieur. Il propose trois onglets
-accessibles au clavier : **Animations**, **Rôles / forces** et **Réglages**.
-Chaque onglet défile à l'intérieur du panneau si nécessaire, tandis que le nuage
-reste visible. Sur mobile (largeur ≤ 750 px), les panneaux s'empilent et le
-défilement redevient celui de la page.
+Pour régénérer exactement le même asset :
 
-L'onglet **Rôles / forces** remet en avant `Rôle ciblé par les forces` et ses
-actions **Attirer** / **Repousser**. En complément, trois mouvements physiques
-courts sont disponibles et peuvent viser le même rôle :
-
-- `pulse` : expansion / contraction temporaire ;
-- `wave` : ondulation déphasée selon la position des particules ;
-- `orbit` : poussée tangentielle, comme une rotation.
-
-Ces effets sont simulés par `role-motion-player.js`. Ils n'utilisent **pas de
-nouvelles frames GIF**, n'appliquent aucune couleur et s'ajoutent temporairement
-aux animations cibles. La lecture `idle` par frames, l'inspecteur 1–40 et les
-autres interactions restent inchangés.
-
-Exemple de commande contrôlée :
-
-```js
-window.persona.dispatch({ type: 'role-motion', name: 'orbit', role: 'float' });
-window.persona.dispatch({ type: 'role-motion', action: 'stop' });
+```bash
+python -m pip install Pillow numpy scipy
+python tools/export_target_animation.py
+node --test tests/*.test.cjs
 ```
 
-Le registre de mouvements est volontairement fermé : seuls `pulse`, `wave`
-et `orbit` sont autorisés, et le rôle doit être connu du registre. Les
-mouvements s'arrêtent automatiquement après 1,6 à 2,2 secondes. La pause de
-la simulation les fige, et une réinitialisation les arrête.
+Le crop fixe `(0, 8, 190, 225)` est appliqué à toutes les images (et non un
+recentrage propre à chaque frame). Le texte sous le personnage est exclu,
+mais les petites gouttes en haut sont conservées. Les points sont affectés
+aux cibles de la frame suivante, en maximisant d'abord le nombre de pixels
+visibles couverts : cela évite les « trous » causés par plusieurs points
+convergeant inutilement vers le même pixel. La dernière pose retrouve
+exactement les coordonnées de la première pour un raccord sans permutation
+d'identités.
 
-Pour ajouter une vraie animation par frames à côté de `idle`, il faudra
-importer son GIF de référence et étendre le registre des animations cibles :
-les trois mouvements physiques ne se substituent pas à ce pipeline.
+Les effets temporaires de type `hit` / `reveal` gardent leurs forces physiques
+et prennent momentanément le dessus sur le suivi de pose. La physique et la
+palette procédurales du comportement libre ne sont pas superposées au clip
+idle : l'animation de référence est prioritaire.
+
+Le ZIP ne contient pas de durée par PNG : **80 ms par image est un réglage
+d'export choisi pour cette version**, et non une information extraite du ZIP.
+Il peut être ajusté via `--frame-duration-ms`, sans changer les images.

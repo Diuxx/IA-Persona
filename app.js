@@ -52,6 +52,10 @@ const idleLoopEndValue = document.querySelector('#idle-loop-end-value');
 const idleLoopDuration = document.querySelector('#idle-loop-duration');
 const idleFreezeButton = document.querySelector('#idle-freeze');
 const idleResumeButton = document.querySelector('#idle-resume');
+// The inspector follows the loaded asset, not a hardcoded frame count.
+const idleFrameCount = targetPlayer.frames.length;
+idleFrameControl.max = String(idleFrameCount);
+idleLoopEndControl.max = String(idleFrameCount);
 
 canvas.width = world.size;
 canvas.height = world.size;
@@ -415,9 +419,14 @@ window.persona = Object.freeze({
   getRoleAssignments() { return world.getRoleAssignments(); },
 });
 
+if (!world.paused) {
+  controller.dispatch({ type: 'animation', name: 'idle' });
+  // The first visible image must be the actual reference pose, not the
+  // previous static drawing while its particles are still converging.
+  world.snapToTargetPose();
+}
 syncBehaviorControls();
 render();
-if (!world.paused) controller.dispatch({ type: 'animation', name: 'idle' });
 requestAnimationFrame(animate);
 
 }
