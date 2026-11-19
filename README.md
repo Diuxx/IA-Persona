@@ -71,10 +71,32 @@ python -m unittest discover -s tests -p 'test_source_motion.py' -v
 
 L'analyse source mesure déplacements, centres de silhouettes, composantes
 détachées et poses quasi identiques. Elle **n'attribue pas d'identifiants
-persistants** ni de durée fictive aux PNG. La dernière transition étant encore
-mobile, l'arrêt souhaité **reste à finaliser** au moment de compiler un clip
-non bouclé. Voir [le diagnostic détaillé](docs/left-motion-decomposition.md).
+persistants** ni de durée fictive aux PNG. La dernière transition des PNG étant encore mobile, le clip compilé fait une lecture
+unique des **36 poses** (sources 12 à 34, puis 1 à 13) et revient ensuite à
+l’**idle**, sans figer durablement le personnage. Voir
+[le diagnostic des sources](docs/left-motion-decomposition.md) et
+[la note d’implémentation](docs/left-animation-v1.md).
 
+
+### Lecture des animations gauche et droite
+
+Les boutons **Aller à gauche** et **Aller à droite** lancent un mouvement à durée
+finie. `right` est le miroir du clip `left`. Les deux utilisent un pool partagé de
+**23 532 identités persistantes**, avec **16 079 à 23 311 particules visibles**
+suivant les poses. L’idle garde ses 43 frames et reprend automatiquement en fin
+de mouvement ; ce comportement est volontaire.
+
+Les cibles sont précompilées par `tools/export_left_animation.py` (fichiers
+`left-targets.js` et `right-targets.js`). Le décodage et la validation des données
+se trouvent dans `src/animation/target-animation-codec.js` ; l’horloge, les
+transitions et l’inspection restent dans `target-animation-player.js`.
+
+Pour éviter qu’une mauvaise correspondance entre pixels ne projette une particule
+à travers le Canvas en un pas, le suivi physique des poses limite le déplacement
+à **11,5 px par pas fixe de 1/60 s**. La limitation ne modifie ni les PNG ni les
+poses, mais peut créer un léger retard visuel sur un déplacement extrême. Les
+contrôles de continuité couvrent désormais l’ensemble des deux clips et leur
+retour à l’idle. La validation du rendu et des FPS en navigateur reste nécessaire.
 
 ## Interactions
 
@@ -94,6 +116,7 @@ node --test tests/*.test.cjs
 node --check src/app.js
 node --check src/engine/particle-world.js
 node --check src/animation/target-animation-player.js
+node --check src/animation/target-animation-codec.js
 node --check src/controller/behavior-controller.js
 python tools/verify_optimizations_browser.py  # nécessite Chromium + Playwright
 ```

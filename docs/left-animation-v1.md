@@ -98,8 +98,9 @@ l'appariement global de la première version).
   - `loop` (idle) : boucle, retour de la dernière frame vers la première ;
   - `one-shot` (left, right) : lecture unique, sans retour automatique à la frame 1, avec
     `next: 'idle'` déclaré dans les données.
-- À la fin d'un `one-shot`, le contrôleur **passe automatiquement à idle** sans relâcher la
-  pose : l'idle prend la suite depuis la pose finale.
+- À la fin d'un `one-shot`, le lecteur marque brièvement la dernière pose comme maintenue,
+  puis le contrôleur **passe automatiquement à idle** sans relâcher le suivi : l'idle
+  devient aussitôt la nouvelle cible. Il n'y a pas d'arrêt durable en position gauche.
 - `stop` relâche la pose et renvoie les particules vers le repos. Changer de clip, par
   exemple `left` vers `right` ou `left` vers `idle`, **ne relâche pas** la pose : le nouveau
   clip prend la main directement.
@@ -123,6 +124,8 @@ window.persona.getSnapshot().animation;  // clip actif, frame, kind, completed, 
 ## Interface
 
 - Boutons « Jouer l’idle », « Aller à gauche », « Aller à droite », « Arrêter l’animation ».
+- Le libellé de fin de `left`/`right` annonce le retour automatique à l’idle, et non
+  une pose finale conservée indéfiniment.
 - L'inspecteur de frames suit le clip actif : 36 frames pour `left` et `right`, 43 pour
   l'idle. La fin de boucle est désactivée pour les clips `one-shot`.
 
@@ -142,12 +145,32 @@ Une borne inférieure (distance au pixel le plus proche de la frame précédente
 contrainte d'identité) donne un 99e percentile à 10 px ; notre appariement est encore à
 34 px au 99e percentile. Le reste est un écart d'appariement, pas un mouvement des sources.
 
+
+## Garde de continuité physique
+
+Le compilateur minimise la somme des distances d'appariement, mais certaines identités
+traversent encore de grandes distances **entre leurs poses cibles** (jusqu'à environ
+100 px dans le diagnostic initial). Ce défaut de correspondance n'est pas masqué dans
+les données et reste une piste d'amélioration de l'exporteur.
+
+Pour ne pas transformer ces écarts en téléportations à l'écran, `ParticleWorld.step()`
+plafonne le **déplacement réellement effectué** à 690 pixels logiques par seconde,
+soit **11,5 px pour un pas fixe de 1/60 s**. Cette limite intervient après le suivi
+par ressort et ne s'applique qu'aux poses dirigées en mode physique `idle` ; les effets
+explicites de dispersion et la fonction d'inspection exacte conservent leur comportement.
+La fréquence, les 36 poses et les identifiants restent inchangés.
+
+Le test de continuité préexistant conserve son seuil strict de 12 px. Un test
+supplémentaire couvre toute la lecture de `left` et `right`, jusqu'au retour automatique
+à l’idle, pour les particules visibles avant et après chaque pas. Cette protection
+peut introduire un retard local lorsqu'une cible change très fortement : il reste à
+contrôler le rendu réel et, à terme, améliorer l'appariement hors ligne.
+
 ## Limites connues
 
-- **Non-téléportation :** le test `idle → left ne téléporte pas les particules` impose
-  moins de 12 px par pas pour les particules visibles avant et après. Il échoue : certains
-  sauts entre frames consécutives atteignent environ 100 px. Le seuil n'a pas été modifié.
-  Décision en attente : raffiner l'appariement, ou justifier un seuil à partir des mesures.
+- **Appariement :** le garde-fou physique limite les grands déplacements visibles, mais
+  le compilateur peut encore affecter des pixels éloignés à une même identité. L'objectif
+  futur est de réduire ces écarts dans les données, sans perdre de détails de silhouette.
 - **Cadence :** 60 ms par frame est provisoire ; la validation visuelle n'a pas encore été
   faite.
 - **Cadrage :** le personnage est à l'échelle 1:1, donc plus petit que l'idle ; les pixels
@@ -182,13 +205,16 @@ Vérifications :
 node --test tests/*.test.cjs
 node --check src/app.js
 node --check src/animation/target-animation-player.js
+node --check src/animation/target-animation-codec.js
 node --check src/controller/behavior-controller.js
 node --check src/engine/particle-world.js
 ```
 
-Résultat actuel : 135 réussites sur 137. Les deux échecs sont décrits ci-dessus :
-`docs/PROJECT.md` (fins de ligne CRLF locales, blob committé correct) et le test de
-non-téléportation.
+**Historique avant correctif :** l'agent signalait 135 réussites sur 137, avec un échec
+de continuité et un échec local lié aux fins de ligne CRLF de `docs/PROJECT.md`.
+Ce document de référence n'a pas été modifié. Les tests ajoutés doivent être vérifiés
+sur le commit de cette branche ; une vérification synthétique du garde-fou a réussi,
+mais elle ne remplace pas la suite Node ni une mesure visuelle navigateur.
 
 ## Fichiers modifiés
 
@@ -197,8 +223,9 @@ non-téléportation.
 | `tools/export_left_animation.py` | compilation hors navigateur (séquence, ancrage, appariement, miroir) |
 | `assets/animations/left-targets.js` | données compilées de `left` (généré) |
 | `assets/animations/right-targets.js` | données compilées de `right` (généré) |
-| `src/engine/particle-world.js` | pool partagé extensible, extras d'œil, poses typées |
-| `src/animation/target-animation-player.js` | clips `loop` et `one-shot`, décodage, complétion, qualité par clip |
+| `src/engine/particle-world.js` | pool partagé extensible, extras d'œil, poses typées, limite de déplacement par pas |
+| `src/animation/target-animation-codec.js` | décodage, validation et vérification des métadonnées et de la population |
+| `src/animation/target-animation-player.js` | clips `loop` et `one-shot`, horloge, complétion, qualité par clip |
 | `src/controller/behavior-controller.js` | sélection des clips, passage automatique à idle |
 | `src/app.js`, `index.html` | boutons et inspecteur adaptés |
 | `tests/left-animation.test.cjs` | tests de l'animation gauche et droite |
