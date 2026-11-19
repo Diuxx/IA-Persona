@@ -38,15 +38,15 @@ test('les segments doivent référencer uniquement des pixels visibles, sans dou
   assert.throws(() => assignAnatomy(decoded.pixels, cloneMap({ runs: overlap }), 200, 200), /Chevauchement/);
 });
 
-test('la cohésion sépare deux zones voisines, sans perdre les liens dans une même zone', () => {
+test('la cohésion relie les pixels voisins même à travers deux zones logiques', () => {
   const pts = [
     { homeX: 1, homeY: 1, eye: false, region: 0 },
     { homeX: 2, homeY: 1, eye: false, region: 0 },
     { homeX: 3, homeY: 1, eye: false, region: 2 },
   ];
   const field = new CohesionField(pts, 6, 6, 0, 0);
-  assert.equal(field.linkCount, 1);
-  assert.deepEqual([...field.counts], [1, 1, 0]);
+  assert.equal(field.linkCount, 2);
+  assert.deepEqual([...field.counts], [1, 2, 1]);
 });
 
 test('les profils rendent la dispersion des gouttes différente de celle de l’œil', () => {

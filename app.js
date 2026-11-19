@@ -30,6 +30,7 @@ const energyControl = document.querySelector('#behavior-energy');
 const energyValue = document.querySelector('#behavior-energy-value');
 const voiceControl = document.querySelector('#voice-level');
 const voiceValue = document.querySelector('#voice-level-value');
+const roleTargetControl = document.querySelector('#role-target');
 
 canvas.width = world.size;
 canvas.height = world.size;
@@ -37,7 +38,16 @@ context.imageSmoothingEnabled = false;
 count.textContent = world.particles.length.toLocaleString('fr-FR');
 linkCount.textContent = world.cohesionField.linkCount.toLocaleString('fr-FR');
 document.querySelector('#anatomy-count').textContent = world.anatomy.names.length;
+for (const role of ROLE_NAMES) {
+  if (!Object.values(world.getRoleAssignments()).some(assigned => assigned.includes(role))) continue;
+  const option = document.createElement('option');
+  option.value = role;
+  option.textContent = role;
+  roleTargetControl.append(option);
+}
 
+
+const roleLegendLabels = new Map();
 for (let index = 0; index < world.anatomy.names.length; index += 1) {
   const name = world.anatomy.names[index];
   const sample = world.anatomy.profiles[index].debug;
@@ -45,9 +55,20 @@ for (let index = 0; index < world.anatomy.names.length; index += 1) {
   const swatch = document.createElement('i');
   swatch.style.backgroundColor = `rgb(${sample.join(',')})`;
   swatch.setAttribute('aria-hidden', 'true');
-  item.append(swatch, `${name} (${world.anatomy.counts[index].toLocaleString('fr-FR')})`);
+  const roleLabel = document.createElement('span');
+  roleLabel.textContent = `${name} (${world.anatomy.counts[index].toLocaleString('fr-FR')}) · ${world.roles.getRoles(name).join(', ')}`;
+  item.append(swatch, roleLabel);
+  roleLegendLabels.set(name, roleLabel);
   anatomyLegend.append(item);
 }
+function refreshRoleLegend() {
+  for (let index = 0; index < world.anatomy.names.length; index += 1) {
+    const name = world.anatomy.names[index];
+    roleLegendLabels.get(name).textContent =
+      `${name} (${world.anatomy.counts[index].toLocaleString('fr-FR')}) · ${world.roles.getRoles(name).join(', ')}`;
+  }
+}
+
 anatomyPreview.addEventListener('change', () => {
   frameOptions.showAnatomy = anatomyPreview.checked;
   anatomyLegend.hidden = !anatomyPreview.checked;
@@ -83,6 +104,7 @@ function syncBehaviorControls() {
   voiceControl.value = Math.round(snapshot.voiceLevel * 100);
   voiceValue.textContent = `${voiceControl.value} %`;
   voiceControl.disabled = snapshot.state !== 'speaking';
+  refreshRoleLegend();
   updateStatus();
 }
 
@@ -166,11 +188,13 @@ voiceControl.addEventListener('input', () => {
 });
 
 document.querySelector('#attract-trigger').addEventListener('click', () => {
-  controller.trigger('field', { x: world.size / 2, y: world.size / 2, radius: 145, strength: -100 });
+  controller.trigger('field', { x: world.size / 2, y: world.size / 2, radius: 145,
+    strength: -100, ...(roleTargetControl.value ? { role: roleTargetControl.value } : {}) });
 });
 
 document.querySelector('#repel-trigger').addEventListener('click', () => {
-  controller.trigger('field', { x: world.size / 2, y: world.size / 2, radius: 145, strength: 100 });
+  controller.trigger('field', { x: world.size / 2, y: world.size / 2, radius: 145,
+    strength: 100, ...(roleTargetControl.value ? { role: roleTargetControl.value } : {}) });
 });
 
 pauseButton.addEventListener('click', () => {
@@ -239,6 +263,7 @@ window.persona = Object.freeze({
     return accepted;
   },
   getSnapshot() { return controller.getSnapshot(); },
+  getRoleAssignments() { return world.getRoleAssignments(); },
 });
 
 syncBehaviorControls();

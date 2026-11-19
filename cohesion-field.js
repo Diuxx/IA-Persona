@@ -1,7 +1,7 @@
 /**
- * Voisinage local figé à partir de la silhouette d'origine.
- * La force rapproche les déplacements des particules adjacentes, sans recréer de points.
- * Un œil clair n'est pas relié au corps sombre pour préserver le clignement.
+ * A single physical fabric over the entire silhouette. Anatomical regions and
+ * semantic roles do not cut the graph: all directly touching pixels can link.
+ * Material coefficients determine how each pixel responds to that influence.
  */
 class CohesionField {
   constructor(particles, width, height, originX, originY) {
@@ -30,12 +30,6 @@ class CohesionField {
         if (cell < 0) continue;
         const neighbor = sourceIndex[cell];
         if (neighbor < 0) continue;
-        const other = particles[neighbor];
-        // Compatibility with the V2.1 unit fixtures, which only define 'eye'.
-        const sameRegion = particle.region === undefined || other.region === undefined
-          ? other.eye === particle.eye
-          : other.region === particle.region;
-        if (!sameRegion) continue;
         this.neighbors[i * 4 + this.counts[i]] = neighbor;
         this.counts[i] += 1;
         if (neighbor > i) this.linkCount += 1;
@@ -43,7 +37,7 @@ class CohesionField {
     }
   }
 
-  /** Le calcul se base sur les positions AVANT l'intégration, sans nouvelle allocation. */
+  /** Compute forces against the pre-integration positions, no allocation. */
   apply(particles, strength, dt) {
     if (strength <= 0 || dt <= 0) return;
     const factor = strength * dt;
@@ -61,7 +55,7 @@ class CohesionField {
       }
       const dx = particle.x - particle.homeX;
       const dy = particle.y - particle.homeY;
-      const localFactor = factor * (particle.profile?.cohesion ?? 1);
+      const localFactor = factor * (particle.material?.cohesion ?? 1);
       particle.vx += ((neighborDx / count) - dx) * localFactor;
       particle.vy += ((neighborDy / count) - dy) * localFactor;
     }

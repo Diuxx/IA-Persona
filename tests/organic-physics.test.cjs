@@ -15,11 +15,11 @@ function averageNeighborGap(points) {
   }, 0) / (points.length - 1);
 }
 
-test('le graphe de cohésion relie uniquement les pixels contigus de même matière', () => {
+test('le graphe de cohésion relie les pixels contigus même de matériaux différents', () => {
   const particles = [point(1, 1), point(2, 1), point(3, 1), point(3, 2, true), point(5, 1)];
   const field = new CohesionField(particles, 7, 4, 0, 0);
-  assert.equal(field.linkCount, 2);
-  assert.deepEqual([...field.counts], [1, 2, 1, 0, 0]);
+  assert.equal(field.linkCount, 3);
+  assert.deepEqual([...field.counts], [1, 2, 2, 1, 0]);
 });
 
 test('la force rapproche les déplacements de deux voisins sans téléporter leurs points', () => {

@@ -10,6 +10,7 @@
   <script defer src="./cohesion-field.js"></script>
   <script defer src="./assets/persona-anatomy.js"></script>
   <script defer src="./anatomy.js"></script>
+  <script defer src="./role-registry.js"></script>
   <script defer src="./particle-world.js"></script>
   <script defer src="./behavior-controller.js"></script>
   <script defer src="./app.js"></script>
@@ -18,7 +19,7 @@
   <main class="page">
     <header class="site-header">
       <div class="brand"><span class="brand-mark" aria-hidden="true"></span> IA-PERSONA <span class="brand-separator">/</span> particle lab</div>
-      <span class="version">V2.3 · comportements</span>
+      <span class="version">V2.3+ · rôles et matière</span>
     </header>
     <div class="layout">
       <section class="preview-card" aria-label="Nuage de particules interactif">
@@ -34,7 +35,7 @@
       <aside class="controls-card">
         <p class="eyebrow">PHYSIQUE / MATIÈRE VIVANTE</p>
         <h1>Un nuage<br><span>de pixels.</span></h1>
-        <p class="intro">Un nuage vivant : ses états d'écoute, de réflexion et de parole modulent les forces, les couleurs et les zones anatomiques, sans spritesheet.</p>
+        <p class="intro">Un nuage vivant : ses zones ont des rôles, ses pixels partagent une même matière physique et les commandes ciblent des capacités, pas des morceaux isolés.</p>
         <div class="metrics">
           <div><strong id="particle-count">—</strong><span>particules</span></div>
           <div><strong>200 × 200</strong><span>grille source</span></div>
@@ -62,6 +63,12 @@
           <div class="control-group">
             <label for="voice-level"><span>Intensité vocale</span><output id="voice-level-value" for="voice-level">0 %</output></label>
             <input id="voice-level" type="range" min="0" max="100" step="5" value="0" disabled />
+          </div>
+          <div class="control-group">
+            <label for="role-target"><span>Rôle ciblé par les forces</span></label>
+            <select id="role-target">
+              <option value="">Toutes les particules</option>
+            </select>
           </div>
           <div class="behavior-actions">
             <button id="attract-trigger" type="button" class="secondary">Attirer les pixels</button>
@@ -103,10 +110,10 @@
             <input id="accent" type="color" value="#a58afc" />
           </div>
         </div>
-        <p class="hint">Les états modulent la même matière. Les commandes physiques et l’API <code>window.persona.dispatch()</code> sont préparées pour une future connexion IA, sans connexion réseau dans cette version.</p>
+        <p class="hint">Les régions définissent des rôles et des matériaux indépendants. L’API <code>window.persona.dispatch()</code> permet de cibler un rôle ou de modifier ses attributions. Aucune IA n'est connectée.</p>
         <div class="divider"></div>
         <p class="eyebrow">MOTEUR</p>
-        <div class="layer-tags"><span>4 états</span><span>Commandes physiques</span><span>11 zones anatomiques</span><span>Cohésion locale</span><span>Respiration</span><span>Ressort</span><span>Morphing couleur</span><span>Clignement</span></div>
+        <div class="layer-tags"><span>4 états</span><span>Rôles dynamiques</span><span>Matériaux partagés</span><span>11 zones logiques</span><span>Cohésion locale</span><span>Respiration</span><span>Ressort</span><span>Morphing couleur</span><span>Clignement</span></div>
       </aside>
     </div>
     <footer>POC expérimental · Source PNG originale préservée · Canvas 2D</footer>

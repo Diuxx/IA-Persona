@@ -114,6 +114,24 @@ class BehaviorController {
     }
   }
 
+  /** A role-based action delegates physical effects to the same bounded engine. */
+  runRoleAction({ role, action, options = {} }) {
+    this.world.roles.validateRole(role);
+    if (action !== 'attract' && action !== 'repel') {
+      throw new RangeError(`Action non prise en charge : ${String(action)}`);
+    }
+    if (!options || typeof options !== 'object' || Array.isArray(options)) {
+      throw new TypeError('Options d’action invalides.');
+    }
+    const strength = options.strength ?? 90;
+    if (!Number.isFinite(strength) || strength < 0 || strength > 280) {
+      throw new RangeError('Intensité d’action hors limites (0–280).');
+    }
+    return this.world.applyField({
+      ...options, role, strength: action === 'attract' ? -strength : strength,
+    });
+  }
+
   /** Explicit allowlist: never execute arbitrary JavaScript from an external adapter. */
   dispatch(command) {
     if (!command || typeof command !== 'object' || Array.isArray(command)) {
@@ -124,6 +142,8 @@ class BehaviorController {
       case 'energy': this.setEnergy(command.value); return true;
       case 'voice': this.setVoiceLevel(command.value); return true;
       case 'effect': return this.trigger(command.name, command.options);
+      case 'roles': return this.world.setRegionRoles(command.region, command.roles);
+      case 'action': return this.runRoleAction(command);
       default: throw new RangeError(`Commande non prise en charge : ${String(command.type)}`);
     }
   }

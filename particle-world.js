@@ -9,6 +9,9 @@ const localAssignAnatomy = typeof module !== 'undefined' && module.exports
 const LocalCohesionField = typeof module !== 'undefined' && module.exports
   ? require('./cohesion-field.js').CohesionField
   : window.CohesionField;
+const LocalRoleRegistry = typeof module !== 'undefined' && module.exports
+  ? require('./role-registry.js').RoleRegistry
+  : window.RoleRegistry;
 
 /** Progression douce de 0 à 1, pour reformer la matière sans rupture. */
 function smoothstep(value) {
@@ -106,14 +109,15 @@ class ParticleWorld {
     this.colorMix = 0;
     this.blinkStartedAt = -1;
     this.nextBlinkAt = 3.8 + this.random() * 3.7;
-    this.particles = decoded.pixels.map(({ x, y, color, eye, region, profile }) => {
+    this.particles = decoded.pixels.map(({ x, y, color, eye, region, material, profile, debugColor }) => {
       const homeX = x + this.originX;
       const homeY = y + this.originY;
       return {
         homeX, homeY, x: homeX, y: homeY, vx: 0, vy: 0,
-        color, eye, region, profile, phase: this.random() * Math.PI * 2,
+        color, eye, region, material, profile, debugColor, phase: this.random() * Math.PI * 2,
       };
     });
+    this.roles = new LocalRoleRegistry(this.anatomy);
     this.cohesionField = new LocalCohesionField(
       this.particles, map.width, map.height, this.originX, this.originY
     );
@@ -169,8 +173,18 @@ class ParticleWorld {
     this.behaviorDrive = { ...drive, accent: [...drive.accent] };
   }
 
+  /** Semantic role assignments change selection, not physical links or materials. */
+  setRegionRoles(region, roles) {
+    this.roles.setRegionRoles(region, roles);
+    return true;
+  }
+
+  getRoleAssignments() {
+    return this.roles.getAssignments();
+  }
+
   /** One-shot local influence. Can later be driven by a constrained AI command. */
-  applyField({ x, y, radius = 65, strength = 90, region } = {}) {
+  applyField({ x, y, radius = 65, strength = 90, region, role } = {}) {
     if (!Number.isFinite(x) || x < 0 || x >= this.size ||
         !Number.isFinite(y) || y < 0 || y >= this.size ||
         !Number.isFinite(radius) || radius < 4 || radius > 250 ||
@@ -182,10 +196,12 @@ class ParticleWorld {
       regionIndex = this.anatomy?.names.indexOf(region) ?? -1;
       if (regionIndex < 0) throw new RangeError(`Zone anatomique inconnue : ${String(region)}`);
     }
+    if (role !== undefined) this.roles.validateRole(role);
     if (this.paused) return false;
     const radiusSquared = radius * radius;
     for (const particle of this.particles) {
       if (regionIndex !== null && particle.region !== regionIndex) continue;
+      if (role !== undefined && !this.roles.has(particle, role)) continue;
       const dx = particle.x - x;
       const dy = particle.y - y;
       const distanceSquared = dx * dx + dy * dy;
@@ -240,7 +256,7 @@ class ParticleWorld {
       const dx = particle.x - originX;
       const dy = particle.y - originY;
       const angle = Math.atan2(dy, dx) + (this.random() - 0.5) * 0.9;
-      const force = (140 + this.random() * 160) * intensity * (particle.profile?.impact ?? 1);
+      const force = (140 + this.random() * 160) * intensity * (particle.material?.impact ?? 1);
       particle.vx += Math.cos(angle) * force;
       particle.vy += Math.sin(angle) * force;
     }
@@ -255,7 +271,7 @@ class ParticleWorld {
     const center = this.size / 2;
     for (const particle of this.particles) {
       const angle = this.random() * Math.PI * 2;
-      const radius = (55 + this.random() * 130) * this.dispersion * (particle.profile?.impact ?? 1);
+      const radius = (55 + this.random() * 130) * this.dispersion * (particle.material?.impact ?? 1);
       particle.x = center + Math.cos(angle) * radius;
       particle.y = center + Math.sin(angle) * radius;
       particle.vx = Math.cos(angle + Math.PI / 2) * 18;
@@ -270,6 +286,7 @@ class ParticleWorld {
     this.colorMix = 0;
     this.blinkStartedAt = -1;
     this.nextBlinkAt = this.clock + 3.8 + this.random() * 3.7;
+    this.roles.reset();
     for (const particle of this.particles) {
       particle.x = particle.homeX;
       particle.y = particle.homeY;
@@ -319,26 +336,25 @@ class ParticleWorld {
 
     this.cohesionField.apply(this.particles, this.cohesion * drive.cohesion * this.getRecoveryFactor(), dt);
     for (const particle of this.particles) {
-      const profile = particle.profile;
-      const wave = profile?.wave ?? 1;
-      const breath = profile?.breath ?? 1;
-      const regionFloat = profile?.float ?? 0;
-      // Tous les pixels d'une zone partagent le même mouvement : l'anatomie
-      // garde une silhouette cohérente, même quand sa matière reste déformable.
+      const material = particle.material;
+      const wave = material?.wave ?? 1;
+      const breath = material?.breath ?? 1;
+      const regionFloat = material?.float ?? 0;
+      // Le léger flottement collectif n'isole pas physiquement les régions.
       const groupPhase = particle.region ?? 0;
       const floatX = Math.sin(this.clock * 1.37 + groupPhase * 0.67) * regionFloat * organic * 0.55;
       const floatY = Math.sin(this.clock * 1.83 + groupPhase * 0.45) * regionFloat * organic * 0.8;
       const waveX = Math.sin(this.clock * 1.12 + particle.homeY * 0.028) * 1.25 * organic * wave;
       const waveY = Math.sin(this.clock * 0.95 + particle.homeX * 0.035) * 0.70 * organic * wave;
-      const blinkY = particle.eye ? (this.originY + 131 - particle.homeY) * blink : 0;
+      const blinkY = (this.anatomy ? this.roles.has(particle, 'blink') : particle.eye) ? (this.originY + 131 - particle.homeY) * blink : 0;
       // Thinking and speech add a subtle internal vibration without relocating the eye.
-      const agitation = drive.agitation * (particle.eye ? 0.08 : 1) *
+      const agitation = drive.agitation * ((this.anatomy ? this.roles.has(particle, 'gaze') : particle.eye) ? 0.08 : 1) *
         Math.sin(this.clock * 8 + particle.homeX * 0.14 + particle.homeY * 0.08);
       const targetX = particle.homeX + sway + waveX + floatX + agitation + (particle.homeX - centerX) * breathe * breath;
       const targetY = particle.homeY + levitation + waveY + floatY + blinkY - agitation * 0.5 +
         (particle.homeY - centerY) * breathe * breath;
-      const spring = this.stiffness * (profile?.spring ?? 1);
-      const friction = profile ? Math.exp(-this.damping * profile.damping * dt) : baseFriction;
+      const spring = this.stiffness * (material?.spring ?? 1);
+      const friction = material ? Math.exp(-this.damping * material.damping * dt) : baseFriction;
       particle.vx += (targetX - particle.x) * spring * dt;
       particle.vy += (targetY - particle.y) * spring * dt;
       particle.vx *= friction;
@@ -372,7 +388,7 @@ class ParticleWorld {
       if (x < 0 || y < 0 || x >= this.size || y >= this.size) continue;
 
       const [r, g, b, a] = particle.color;
-      const opacity = (a / 255) * (particle.eye ? 1 - blink * 0.98 : 1);
+      const opacity = (a / 255) * ((this.anatomy ? this.roles.has(particle, 'blink') : particle.eye) ? 1 - blink * 0.98 : 1);
       if (opacity <= 0) continue;
 
       const pixelIndex = y * this.size + x;
@@ -381,17 +397,17 @@ class ParticleWorld {
       const weight = opacity * (particle.eye ? 6 : 1);
       const totalWeight = previousWeight + weight;
       const variation = 0.72 + 0.28 * Math.sin(particle.phase + this.clock * 2.4) ** 2;
-      const tint = Math.min(1, mix * variation * (particle.profile?.tint ?? 1));
+      const tint = Math.min(1, mix * variation * (particle.material?.tint ?? 1));
       // Transient explosion/reveal colors take priority over the current behavior.
-      const behaviorTint = Math.min(1, stateTint * (1 - tint) * (particle.profile?.tint ?? 1));
+      const behaviorTint = Math.min(1, stateTint * (1 - tint) * (particle.material?.tint ?? 1));
       let red = r + (accentR - r) * tint;
       let green = g + (accentG - g) * tint;
       let blue = b + (accentB - b) * tint;
       red += (drive.accent[0] - red) * behaviorTint;
       green += (drive.accent[1] - green) * behaviorTint;
       blue += (drive.accent[2] - blue) * behaviorTint;
-      if (showAnatomy && particle.profile) {
-        [red, green, blue] = particle.profile.debug;
+      if (showAnatomy && particle.debugColor) {
+        [red, green, blue] = particle.debugColor;
       }
 
       if (previousWeight > 0) this.lastCollisionCount += 1;

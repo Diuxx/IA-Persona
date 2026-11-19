@@ -130,7 +130,7 @@ L'exécution conserve les **15 886 pixels** indépendants et la physique V2.1. C
 - `tools/export_anatomy.py` reconnaît hors navigateur les composantes déconnectées du `source.png` (gouttes et éclats), les volumes gris internes et les masques de la zone d'expression et des pattes. Les limites de zone reposent sur les mêmes coordonnées de référence que `tools/split_assets.py` ; elles sont **approximatives**, car le PNG d'origine est aplati.
 - `assets/persona-anatomy.js` contient les régions sous forme de segments RLE `[y, x, longueur, zone]` sur la même grille logique **200 × 200** que `persona-map.js`.
 - `anatomy.js` vérifie que chaque pixel visible appartient à **une et une seule zone** et associe un profil de mouvement, de cohésion, de rappel, de dissipation et de couleur.
-- `cohesion-field.js` ne relie que les voisins de la **même zone anatomique**. Les zones restent déformables ; le rappel vers la position d'origine évite de rompre les raccords du nuage.
+- **Historique V2.2 :** `cohesion-field.js` reliait uniquement les voisins d’une même zone. Cette limitation a été supprimée dans la refonte « Rôles et matériaux » ci-dessous.
 - `particle-world.js` module les forces de ressort, l'amortissement, les ondes, l'explosion, la révélation et le changement de couleur en fonction du profil, sans changer le nombre de particules.
 
 ### Zones visibles
@@ -166,7 +166,7 @@ Pour changer la forme du personnage, régénérer **d'abord** `persona-map.js`, 
 
 ### Limites et suite
 
-L'anatomie est une segmentation par zones et non un véritable squelette articulé. Les frontières entre zones dépendent du PNG aplati : certaines zones superposées ne peuvent être reconstruites exactement. La cohésion V2.1 reste réutilisée, mais les liaisons transfrontalières sont volontairement absentes ; la physique reste approximative. Les états IA `listening`, `thinking` et `speaking` sont réservés à la V2.3.
+L'anatomie est une segmentation par zones et non un véritable squelette articulé. Les frontières entre zones dépendent du PNG aplati : certaines zones superposées ne peuvent être reconstruites exactement. La physique est approximative ; la limitation historique sur les liaisons transfrontalières a été levée dans la refonte « Rôles et matériaux » ci-dessous. Les états IA `listening`, `thinking` et `speaking` sont réservés à la V2.3.
 
 
 ## V2.3 — Comportements et commandes physiques
@@ -234,3 +234,93 @@ Les nouveaux tests couvrent les états, l'interpolation, le changement d'état e
 - Les états produisent des variations de la matière, **pas des expressions faciales dessinées à la main**.
 - Le rendu est toujours effectué sur un Canvas 2D de 400×400 : les particules superposées sont mélangées au lieu d'afficher plusieurs points distincts.
 - Le signal vocal est manuel dans la démo. Le brancher à une vraie sortie audio demande un adaptateur séparé et des règles de cycle de vie.
+
+
+## Refonte — Rôles, matériaux et matière continue (sur la base de V2.3)
+
+**Décision de conception :** une zone est une façon de sélectionner des pixels, pas une pièce
+physique séparée. Chaque particule participe à **une seule simulation**. Son comportement
+physique vient d'un matériau et ses capacités sémantiques de rôles configurables.
+
+| Niveau | Fichier | Responsabilité |
+| --- | --- | --- |
+| Zone logique | `assets/persona-anatomy.js` + `anatomy.js` | Reconnaître les pixels du corps, de l'œil, des gouttes… |
+| Matériau | `anatomy.js` → `MATERIAL_PRESETS` | Ressort, amortissement, cohésion, dispersion, teinte |
+| Rôles | `anatomy.js` → `REGION_DEFINITIONS`, `role-registry.js` | Capacités multiples attribuées à chaque zone |
+| Matière physique | `cohesion-field.js` | Relier **tous** les pixels adjacents, même de régions et matériaux différents |
+| Décisions | `behavior-controller.js` | Convertir une intention validée en forces locales / changement d'état |
+| Simulation | `particle-world.js` | Appliquer les forces à toutes les particules avec un seul pas de temps |
+
+### Rôles initiaux
+
+- **Œil** : `gaze`, `blink`, `focus` (matériau `optic`).
+- **Corps** : `breathe`, `deform`, `express` (matériau `cloud`).
+- **Volumes du nuage** : `breathe`, `deform`, `float` (matériau `vapor`).
+- **Gouttes** : `float`, `orbit`, `express` (matériau `droplet`).
+- **Pattes** : `anchor`, `deform` (matériau `limb`).
+- **Éclats** : `float`, `orbit`, `sparkle` (matériau `spark`).
+
+Les rôles représentent actuellement **des capacités de sélection**, pas dix animations
+indépendantes. Le clignement utilise désormais le rôle `blink`, et les champs de force
+peuvent cibler les rôles `float`, `gaze`, etc. `gaze` et `orbit` ne sont pas encore des
+animations spécialisées : c'est une interface pour les développer séparément sans changer
+la physique des pixels.
+
+### Commandes déclaratives (console navigateur)
+
+```javascript
+// L'IA pourra sélectionner plusieurs zones d'un coup via leur rôle commun.
+window.persona.dispatch({
+  type: 'effect', name: 'field',
+  options: { x: 200, y: 180, radius: 140, strength: -80, role: 'float' },
+});
+
+// Requête sémantique vers le même système de forces : strength positif,
+// 'attract' oriente automatiquement cette impulsion vers le centre.
+window.persona.dispatch({
+  type: 'action', role: 'gaze', action: 'attract',
+  options: { x: 220, y: 170, radius: 100, strength: 90 },
+});
+
+// Une zone peut cumuler plusieurs rôles et être réaffectée à chaud.
+window.persona.dispatch({
+  type: 'roles', region: 'eye', roles: ['gaze', 'focus', 'express'],
+});
+
+// Consultation sans accès en écriture au tableau de particules :
+const assignments = window.persona.getRoleAssignments();
+```
+
+Les champs acceptent toujours `region` pour la rétrocompatibilité V2.3, et `role` pour
+cibler **plusieurs zones**. Les deux peuvent être associés (intersection). Les rôles sont
+limités à une liste blanche ; maximum six par zone ; forces, rayon et coordonnées restent
+bornés comme en V2.3. Les commandes invalides échouent explicitement.
+
+Le bouton **Réinitialiser** rétablit les rôles d'origine. Le nouveau sélecteur **Rôle
+ciblé par les forces** sert de démonstration aux boutons Attirer / Repousser. La légende
+anatomique indique les rôles de chaque région et se met à jour lors des réaffectations.
+
+### Choix et limites
+
+- Un pixel a **un matériau** et peut posséder **plusieurs rôles via sa zone**. Des zones
+  différentes peuvent partager un matériau ou un rôle. Changer un rôle ne coupe aucune
+  liaison physique ni ne change les coefficients du matériau.
+- Les liens locaux entre pixels adjacents sont précompilés une fois. Les zones
+  disjointes ne sont pas artificiellement raccordées : la physique reste géométrique.
+- Les anciens `profile` / `ANATOMY_PROFILES` restent disponibles pour compatibilité
+  pendant la migration, mais ne sont plus utilisés par le solveur physique.
+- Cette PR **ne connecte aucune IA** et n'autorise aucune exécution arbitraire. Les
+  sélections dynamiques de *sous-ensembles de pixels indépendants de toute zone* et
+  les comportements `lookAt` / `orbit` seront des évolutions séparées.
+
+### Vérifications
+
+```bash
+node --test tests/*.test.cjs
+node --check anatomy.js
+node --check role-registry.js
+node --check cohesion-field.js
+node --check particle-world.js
+node --check behavior-controller.js
+node --check app.js
+```
