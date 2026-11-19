@@ -4,13 +4,13 @@
  * Future adapters can send the same validated commands as the demo UI.
  */
 const BEHAVIOR_PRESETS = Object.freeze({
-  idle: Object.freeze({ wave: 1, breath: 1, sway: 1, cohesion: 1, agitation: 0, pulse: 0, tint: 0, accent: [165, 138, 252] }),
-  listening: Object.freeze({ wave: 0.58, breath: 0.86, sway: 0.45, cohesion: 1.13, agitation: 0.04, pulse: 0.35, tint: 0.28, accent: [86, 171, 247] }),
-  thinking: Object.freeze({ wave: 1.3, breath: 1.05, sway: 0.6, cohesion: 1.06, agitation: 0.78, pulse: 0.22, tint: 0.48, accent: [171, 125, 253] }),
-  speaking: Object.freeze({ wave: 1.03, breath: 1.1, sway: 0.55, cohesion: 1.02, agitation: 0.22, pulse: 1, tint: 0.34, accent: [105, 218, 232] }),
+  idle: Object.freeze({ wave: 1, breath: 1, sway: 1, cohesion: 1, agitation: 0, pulse: 0 }),
+  listening: Object.freeze({ wave: 0.58, breath: 0.86, sway: 0.45, cohesion: 1.13, agitation: 0.04, pulse: 0.35 }),
+  thinking: Object.freeze({ wave: 1.3, breath: 1.05, sway: 0.6, cohesion: 1.06, agitation: 0.78, pulse: 0.22 }),
+  speaking: Object.freeze({ wave: 1.03, breath: 1.1, sway: 0.55, cohesion: 1.02, agitation: 0.22, pulse: 1 }),
 });
 
-const DRIVE_FIELDS = Object.freeze(['wave', 'breath', 'sway', 'cohesion', 'agitation', 'pulse', 'tint']);
+const DRIVE_FIELDS = Object.freeze(['wave', 'breath', 'sway', 'cohesion', 'agitation', 'pulse']);
 const TRANSITION_DURATION = 0.42;
 const INITIAL_ENERGY = 0.45;
 
@@ -31,15 +31,13 @@ function buildDrive(preset, energy, voiceLevel) {
     cohesion: preset.cohesion,
     agitation: preset.agitation * energy,
     pulse: preset.pulse * (0.25 + energy * 0.3 + voiceLevel * 0.75),
-    tint: preset.tint * (0.7 + energy * 0.3),
-    accent: [...preset.accent],
   };
   return drive;
 }
 
 function blendDrives(previous, next, fraction) {
   const amount = smoothstep(fraction);
-  const result = { accent: previous.accent.map((v, index) => interpolate(v, next.accent[index], amount)) };
+  const result = {};
   for (const key of DRIVE_FIELDS) result[key] = interpolate(previous[key], next[key], amount);
   return result;
 }

@@ -105,7 +105,7 @@ class ParticleWorld {
     // Neutral physics drive, used when ParticleWorld is instantiated without a controller.
     this.behaviorDrive = {
       wave: 1, breath: 1, sway: 1, cohesion: 1,
-      agitation: 0, pulse: 0, tint: 0, accent: [165, 138, 252],
+      agitation: 0, pulse: 0,
     };
     this.accent = [165, 138, 252];
     this.colorMix = 0;
@@ -173,19 +173,18 @@ class ParticleWorld {
   }
 
   setBehaviorDrive(drive) {
-    if (!drive || typeof drive !== 'object' || !Array.isArray(drive.accent) ||
-        drive.accent.length !== 3 || drive.accent.some((channel) =>
-          !Number.isFinite(channel) || channel < 0 || channel > 255)) {
+    if (!drive || typeof drive !== 'object' || Array.isArray(drive)) {
       throw new TypeError('Paramètres de comportement invalides.');
     }
-    for (const name of ['wave', 'breath', 'sway', 'cohesion', 'agitation', 'pulse', 'tint']) {
+    for (const name of ['wave', 'breath', 'sway', 'cohesion', 'agitation', 'pulse']) {
       const value = drive[name];
-      const maximum = name === 'tint' ? 1 : 4;
-      if (!Number.isFinite(value) || value < 0 || value > maximum) {
+      if (!Number.isFinite(value) || value < 0 || value > 4) {
         throw new RangeError(`Comportement invalide : ${name}`);
       }
     }
-    this.behaviorDrive = { ...drive, accent: [...drive.accent] };
+    this.behaviorDrive = Object.fromEntries(
+      ['wave', 'breath', 'sway', 'cohesion', 'agitation', 'pulse'].map(name => [name, drive[name]])
+    );
   }
 
   /** Semantic role assignments change selection, not physical links or materials. */
@@ -419,8 +418,6 @@ class ParticleWorld {
     this.lastCollisionCount = 0;
     const mix = this.colorMix;
     const [accentR, accentG, accentB] = this.accent;
-    const drive = this.behaviorDrive;
-    const stateTint = drive.tint * (0.88 + 0.12 * Math.sin(this.clock * 5.6) ** 2);
     const blink = this.mode === 'idle' ? this.getBlinkAmount() : 0;
 
     const pose = this.targetPose;
@@ -453,14 +450,11 @@ class ParticleWorld {
       const totalWeight = previousWeight + weight;
       const variation = 0.72 + 0.28 * Math.sin(particle.phase + this.clock * 2.4) ** 2;
       const tint = Math.min(1, mix * variation * (particle.material?.tint ?? 1));
-      // Transient explosion/reveal colors take priority over the current behavior.
-      const behaviorTint = Math.min(1, stateTint * (1 - tint) * (particle.material?.tint ?? 1));
+      // The behavior state never changes the colors of the original art.
+      // Only explicit reveal/explosion effects and anatomy inspection may recolor pixels.
       let red = r + (accentR - r) * tint;
       let green = g + (accentG - g) * tint;
       let blue = b + (accentB - b) * tint;
-      red += (drive.accent[0] - red) * behaviorTint;
-      green += (drive.accent[1] - green) * behaviorTint;
-      blue += (drive.accent[2] - blue) * behaviorTint;
       if (showAnatomy && particle.debugColor) {
         [red, green, blue] = particle.debugColor;
       }

@@ -175,18 +175,18 @@ La V2.3 conserve **le même nuage de 15 886 particules et ses 11 régions anatom
 Elle sépare la logique d'état de la simulation et du rendu :
 
 - `behavior-controller.js` interprète les intentions (`idle`, `listening`, `thinking`, `speaking`), maintient les signaux d'énergie et de volume vocal et interpole leurs paramètres sur **420 ms**.
-- `particle-world.js` conserve l'autorité sur les forces et les positions. Les comportements modulent l'amplitude des ondes, la respiration, les pulsations, la cohésion et la colorisation, sans ajouter de nouvelles animations pré-calculées.
+- `particle-world.js` conserve l'autorité sur les forces et les positions. Les comportements modulent l'amplitude des ondes, la respiration, les pulsations, la cohésion sans recoloration par état, sans ajouter de nouvelles animations pré-calculées.
 - `app.js` reste un adaptateur entre l'interface HTML, les commandes du contrôleur et Canvas.
-- Les réactions `hit`, `reveal` et `blink` sont **temporaires** : un impact pendant `speaking` ne change pas le comportement durable. La coloration de réaction reste prioritaire sur celle de l'état courant.
+- Les réactions `hit`, `reveal` et `blink` sont **temporaires** : un impact pendant `speaking` ne change pas le comportement durable. Les états ne modifient pas la couleur ; les effets manuels peuvent encore utiliser une teinte explicite.
 
 ### États prédéfinis
 
-| État | Mouvement | Palette |
+| État | Mouvement | Couleurs |
 | --- | --- | --- |
-| `idle` | Respiration, flottement et clignement naturel | Originale |
-| `listening` | Stabilité accrue, pulsations douces | Bleu |
-| `thinking` | Ondulation et vibration interne plus intenses | Violet |
-| `speaking` | Pulsations synchronisées avec un signal vocal normalisé | Cyan |
+| `idle` | Respiration, flottement et clignement naturel | Source originale |
+| `listening` | Stabilité accrue, pulsations douces | Source originale |
+| `thinking` | Ondulation et vibration interne plus intenses | Source originale |
+| `speaking` | Pulsations synchronisées avec un signal vocal normalisé | Source originale |
 
 Les curseurs **Énergie** et **Intensité vocale** permettent de simuler des valeurs externes. Le second est activé uniquement en mode `speaking`. Aucun micro, enregistrement ou LLM n'est branché dans cette PR.
 
@@ -352,3 +352,17 @@ Pour lancer l'animation, appeler
 Le prototype charge ses modules par balises `<script>` depuis `index.html`. **Tous les fichiers référencés doivent exister dans la même arborescence** : notamment `role-registry.js`, utilisé par `particle-world.js`. Un fichier absent provoque un `404`, parfois renvoyé en `text/html` par un serveur statique, puis une erreur `LocalRoleRegistry is not a constructor`.
 
 La commande `node --test tests/*.test.cjs` inclut un contrôle des chemins de scripts, des feuilles CSS et des importations locales afin de détecter ce type de régression avant la publication. Pour utiliser Live Server, ouvrir le dossier racine du dépôt, démarrer `index.html`, puis recharger la page après la mise à jour des fichiers.
+
+### V2.4 — Correction : pas de couleur attribuée aux comportements
+
+Les états `idle`, `listening`, `thinking`, `speaking` pilotent
+exclusivement les **forces et les mouvements** (ondes, agitation, respiration,
+cohésion, pulsation). Ils ne définissent plus de palette, d'accent ou de teinte.
+
+Le lecteur d'animation conserve les **couleurs de chaque pose cible** du GIF,
+qui font partie du dessin de référence. Les effets manuels `explode` et
+`reveal` gardent leur paramètre de teinte, indépendant des états.
+Le mode « Visualiser les zones » conserve ses couleurs temporaires de diagnostic.
+
+Les futurs états devront être représentés par leurs propres animations cibles,
+comme `idle`, plutôt que par un changement automatique de palette.

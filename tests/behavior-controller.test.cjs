@@ -16,7 +16,7 @@ function averageDistanceFromHome(world, region) {
     distance + Math.hypot(particle.x - particle.homeX, particle.y - particle.homeY), 0) / pixels.length;
 }
 
-test('les quatre comportements sont stables, connus et ont chacun un profil coloré', () => {
+test('les quatre comportements sont stables, connus et modifient seulement la physique', () => {
   assert.deepEqual(Object.keys(BEHAVIOR_PRESETS), ['idle', 'listening', 'thinking', 'speaking']);
   const { controller } = createPersona();
   for (const state of Object.keys(BEHAVIOR_PRESETS)) {
@@ -32,12 +32,12 @@ test('transition douce : l’entrée dans thinking ne saute pas immédiatement a
   const { world, controller } = createPersona();
   const first = world.behaviorDrive;
   assert.equal(controller.setState('thinking'), true);
-  assert.equal(world.behaviorDrive.tint, first.tint);
+  assert.equal(world.behaviorDrive.agitation, first.agitation);
   controller.advance(0.1);
-  assert.ok(world.behaviorDrive.tint > first.tint);
-  assert.ok(world.behaviorDrive.tint < BEHAVIOR_PRESETS.thinking.tint);
+  assert.ok(world.behaviorDrive.agitation > first.agitation);
+  assert.ok(world.behaviorDrive.agitation < BEHAVIOR_PRESETS.thinking.agitation * controller.energy);
   controller.advance(0.5);
-  assert.equal(world.behaviorDrive.tint, BEHAVIOR_PRESETS.thinking.tint * (0.7 + controller.energy * 0.3));
+  assert.equal(world.behaviorDrive.agitation, BEHAVIOR_PRESETS.thinking.agitation * controller.energy);
   assert.equal(controller.setState('thinking'), false);
 });
 
@@ -45,10 +45,10 @@ test('interruption de transition conserve le dernier état interpolé', () => {
   const { world, controller } = createPersona();
   controller.setState('thinking');
   controller.advance(0.12);
-  const before = world.behaviorDrive.tint;
+  const before = world.behaviorDrive.agitation;
   controller.setState('listening');
   controller.advance(0.001);
-  assert.ok(Math.abs(world.behaviorDrive.tint - before) < 0.001);
+  assert.ok(Math.abs(world.behaviorDrive.agitation - before) < 0.001);
 });
 
 test('le signal vocal n’affecte la pulsation que pendant speaking', () => {
@@ -150,15 +150,15 @@ test('pause fige le contrôleur et rejette les réactions physiques', () => {
   const { world, controller } = createPersona();
   controller.setState('thinking');
   controller.advance(0.15);
-  const tint = world.behaviorDrive.tint;
+  const agitation = world.behaviorDrive.agitation;
   world.paused = true;
   controller.advance(2);
-  assert.equal(world.behaviorDrive.tint, tint);
+  assert.equal(world.behaviorDrive.agitation, agitation);
   assert.equal(controller.trigger('field', { x: 100, y: 100, radius: 90, strength: 50 }), false);
   assert.equal(controller.trigger('hit'), false);
   world.paused = false;
   controller.advance(0.5);
-  assert.ok(world.behaviorDrive.tint > tint);
+  assert.ok(world.behaviorDrive.agitation > agitation);
 });
 
 test('reset revient à idle sans modifier la carte anatomique ni les pixels', () => {
