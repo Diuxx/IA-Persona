@@ -65,7 +65,7 @@ idleLoopEndControl.max = String(idleFrameCount);
 canvas.width = world.size;
 canvas.height = world.size;
 context.imageSmoothingEnabled = false;
-count.textContent = world.particles.length.toLocaleString('fr-FR');
+count.textContent = world.visibleParticleCount.toLocaleString('fr-FR');
 linkCount.textContent = world.cohesionField.linkCount.toLocaleString('fr-FR');
 document.querySelector('#anatomy-count').textContent = world.anatomy.names.length;
 for (const role of ROLE_NAMES) {
@@ -141,7 +141,7 @@ function syncBehaviorControls() {
   voiceControl.disabled = snapshot.state !== 'speaking';
   refreshRoleLegend();
   syncAnimationControls();
-  count.textContent = world.particles.length.toLocaleString('fr-FR');
+  count.textContent = world.visibleParticleCount.toLocaleString('fr-FR');
   linkCount.textContent = world.cohesionField.linkCount.toLocaleString('fr-FR');
   updateRoleMotionStatus();
   updateStatus();
@@ -149,6 +149,8 @@ function syncBehaviorControls() {
 
 function syncAnimationControls() {
   const animation = targetPlayer.getSnapshot();
+  count.textContent = animation.visibleCount.toLocaleString('fr-FR');
+  particleDensityControl.value = animation.densityLimit === null ? 'auto' : String(animation.densityLimit);
   idleFrameControl.value = String(animation.frame + 1);
   idleSpeedControl.value = String(animation.speed);
   idleSpeedValue.textContent = `${animation.speed.toFixed(2).replace(/\.?0+$/, '')}×`;
@@ -329,7 +331,7 @@ antiFlickerControl.addEventListener('change', () => {
 });
 
 particleDensityControl.addEventListener('change', () => {
-  controller.dispatch({ type: 'animation', action: 'particle-count', count: Number(particleDensityControl.value) });
+  controller.dispatch({ type: 'animation', action: 'particle-count', count: particleDensityControl.value === 'auto' ? 'auto' : Number(particleDensityControl.value) });
   pixelStabilizer.reset();
   frameDirty = true;
   syncBehaviorControls();
@@ -445,7 +447,7 @@ window.persona = Object.freeze({
     if (accepted) {
       frameDirty = true;
       pixelStabilizer.reset();
-      particleDensityControl.value = String(world.particles.length);
+      particleDensityControl.value = world.densityLimit === null ? 'auto' : String(world.densityLimit);
     }
     syncBehaviorControls();
     return accepted;

@@ -73,15 +73,16 @@
 <input id="idle-speed" type="range" min="0.25" max="3" step="0.25" value="1"/>
 </div>
 <div class="control-group">
-<label for="particle-density"><span>Nombre de particules simulées</span></label>
+<label for="particle-density"><span>Limite de particules visibles</span></label>
 <select id="particle-density">
+<option value="auto" selected>Automatique · suit chaque frame</option>
 <option value="2000">2 000 · Léger</option>
 <option value="4000">4 000</option>
 <option value="8000">8 000</option>
 <option value="12000">12 000</option>
-<option value="15886" selected>15 886 · Original</option>
+<option value="15886">15 886 maximum</option>
 </select>
-<p class="frame-inspector-note">La densité modifie réellement la simulation et la cohésion, sans retirer de frames.</p>
+<p class="frame-inspector-note">En mode auto, chaque frame utilise exactement ses pixels visibles. Les plafonds réduisent les points actifs sans supprimer de frames.</p>
 </div>
 <div class="frame-inspector-heading">
 <label for="idle-loop-end">Dernière frame de la boucle</label>
@@ -156,7 +157,7 @@
 </div>
 <label class="anatomy-toggle" for="anti-flicker">
   <span>Stabilisation anti-scintillement</span>
-  <input id="anti-flicker" type="checkbox" checked/>
+  <input id="anti-flicker" type="checkbox"/>
 </label>
 <p class="panel-help">Lissage léger des pixels en mouvement. Désactive-le pour comparer au rendu brut ; l'inspecteur de frames reste toujours exact.</p>
 <div class="controls-stack">
@@ -189,7 +190,7 @@
 </div>
 </div>
 <div class="metrics">
-<div><strong id="particle-count">—</strong><span>particules</span></div>
+<div><strong id="particle-count">—</strong><span>particules visibles</span></div>
 <div><strong>200 × 200</strong><span>grille source</span></div>
 </div>
 <div aria-label="Mesures de performance" class="performance-metrics">

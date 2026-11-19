@@ -127,6 +127,9 @@ class ParticleWorld {
       };
     });
     this.sourceParticleCount = this.allParticles.length;
+    this.dynamicPopulation = false;
+    this.densityLimit = null; // null = exactly the visible population of each reference pose.
+    this.visibleParticleCount = this.sourceParticleCount;
     this.particles = this.allParticles;
     // The ranking is stable across density changes, avoiding random reshuffles.
     this.particleRank = this.allParticles.map((particle, index) => ({
@@ -138,8 +141,52 @@ class ParticleWorld {
     );
   }
 
-  /** Change the actual simulated point count; original identities stay available. */
+  /** Expand once, not every frame. Extra body particles reuse a nearby source's material and roles. */
+  enableDynamicPopulation(animation) {
+    if (this.dynamicPopulation) {
+      if (this.allParticles.length !== animation.particleCount) {
+        throw new RangeError('Capacité du pool incompatible.');
+      }
+      return;
+    }
+    if (this.particles.length !== this.sourceParticleCount || !Array.isArray(animation.extraSources) ||
+        animation.extraSources.length !== animation.particleCount - this.sourceParticleCount ||
+        animation.particleCount > 40000) {
+      throw new RangeError('Définition du pool dynamique invalide.');
+    }
+    for (const sourceIndex of animation.extraSources) {
+      if (!Number.isInteger(sourceIndex) || sourceIndex < 0 || sourceIndex >= this.sourceParticleCount ||
+          this.allParticles[sourceIndex].eye) {
+        throw new RangeError('Source d’une particule supplémentaire invalide.');
+      }
+    }
+    for (const sourceIndex of animation.extraSources) {
+      const source = this.allParticles[sourceIndex];
+      this.allParticles.push({ ...source, sourceIndex: this.allParticles.length,
+        vx: 0, vy: 0, phase: this.random() * Math.PI * 2, activity: 0 });
+    }
+    this.particles = this.allParticles;
+    this.particleRank = this.allParticles.map((particle, index) => ({
+      index, score: particleSelectionScore(particle.homeX, particle.homeY + index),
+    })).sort((a, b) => a.score - b.score || a.index - b.index);
+    // Keep the original physical mesh: new points are attracted by their own spring.
+    // The original mesh stays valid; dynamically inactive neighbors are ignored.
+    this.dynamicPopulation = true;
+    this.visibleParticleCount = 0;
+  }
+
+  /** Change the quality cap; dynamic animations keep the fixed-size reusable pool. */
   setParticleCount(count) {
+    if (this.dynamicPopulation) {
+      if (count !== 'auto' && (!Number.isInteger(count) || count < 500 || count > this.allParticles.length)) {
+        throw new RangeError(`Plafond de particules hors limites (500–${this.allParticles.length}).`);
+      }
+      const limit = count === 'auto' ? null : count;
+      if (this.densityLimit === limit) return false;
+      this.densityLimit = limit;
+      return true;
+    }
+
     if (!Number.isInteger(count) || count < 500 || count > this.sourceParticleCount) {
       throw new RangeError(`Nombre de particules hors limites (500–${this.sourceParticleCount}).`);
     }
@@ -169,8 +216,14 @@ class ParticleWorld {
     for (let index = 0; index < this.particles.length; index += 1) {
       const offset = index * 3;
       const particle = this.particles[index];
-      particle.x = this.originX + from[offset] + (to[offset] - from[offset]) * blend;
-      particle.y = this.originY + from[offset + 1] + (to[offset + 1] - from[offset + 1]) * blend;
+      const fromVisible = from[offset + 2] !== 0;
+      const toVisible = to[offset + 2] !== 0;
+      const firstX = fromVisible ? from[offset] : to[offset];
+      const firstY = fromVisible ? from[offset + 1] : to[offset + 1];
+      const finalX = toVisible ? to[offset] : from[offset];
+      const finalY = toVisible ? to[offset + 1] : from[offset + 1];
+      particle.x = this.originX + firstX + (finalX - firstX) * blend;
+      particle.y = this.originY + firstY + (finalY - firstY) * blend;
       particle.vx = 0;
       particle.vy = 0;
     }
@@ -192,6 +245,33 @@ class ParticleWorld {
       }
     }
     this.targetPose = pose;
+    if (!this.dynamicPopulation) return;
+    if (!pose) {
+      this.visibleParticleCount = this.sourceParticleCount;
+      for (let i = 0; i < this.particles.length; i += 1) {
+        this.particles[i].activity = i < this.sourceParticleCount ? 1 : 0;
+      }
+      return;
+    }
+    const { from, to, blend } = pose;
+    let visible = 0;
+    for (let index = 0; index < this.particles.length; index += 1) {
+      const offset = index * 3;
+      const fromVisible = from[offset + 2] !== 0 ? 1 : 0;
+      const toVisible = to[offset + 2] !== 0 ? 1 : 0;
+      const activity = fromVisible + (toVisible - fromVisible) * blend;
+      const particle = this.particles[index];
+      if (activity > 0 && (particle.activity ?? 0) === 0 && fromVisible === 0) {
+        // A newly activated particle appears near the desired pixel, not at a stale home.
+        particle.x = this.originX + to[offset];
+        particle.y = this.originY + to[offset + 1];
+        particle.vx = 0;
+        particle.vy = 0;
+      }
+      particle.activity = activity;
+      if (activity > 0) visible += 1;
+    }
+    this.visibleParticleCount = visible;
   }
 
   setAccent(color) {
@@ -351,7 +431,7 @@ class ParticleWorld {
   }
 
   reset() {
-    this.targetPose = null;
+    this.setTargetPose(null);
     this.mode = 'idle';
     this.modeTime = 0;
     this.colorMix = 0;
@@ -414,6 +494,7 @@ class ParticleWorld {
       this.cohesion * drive.cohesion * this.getRecoveryFactor() * cohesionScale, dt);
     for (let index = 0; index < this.particles.length; index += 1) {
       const particle = this.particles[index];
+      if (this.dynamicPopulation && (particle.activity ?? 0) <= 0) continue;
       const material = particle.material;
       const wave = material?.wave ?? 1;
       const breath = material?.breath ?? 1;
@@ -434,8 +515,14 @@ class ParticleWorld {
       if (pose) {
         const offset = index * 3;
         const blend = pose.blend;
-        const x = pose.from[offset] + (pose.to[offset] - pose.from[offset]) * blend;
-        const y = pose.from[offset + 1] + (pose.to[offset + 1] - pose.from[offset + 1]) * blend;
+        const fromVisible = pose.from[offset + 2] !== 0;
+        const toVisible = pose.to[offset + 2] !== 0;
+        const fromX = fromVisible ? pose.from[offset] : pose.to[offset];
+        const fromY = fromVisible ? pose.from[offset + 1] : pose.to[offset + 1];
+        const toX = toVisible ? pose.to[offset] : pose.from[offset];
+        const toY = toVisible ? pose.to[offset + 1] : pose.from[offset + 1];
+        const x = fromX + (toX - fromX) * blend;
+        const y = fromY + (toY - fromY) * blend;
         // Track the reference, without a second procedural animation on top.
         targetX = this.originX + x;
         targetY = this.originY + y;
@@ -481,6 +568,8 @@ class ParticleWorld {
     const pose = this.targetPose;
     for (let index = 0; index < this.particles.length; index += 1) {
       const particle = this.particles[index];
+      const activity = this.dynamicPopulation ? (particle.activity ?? 0) : 1;
+      if (activity <= 0) continue;
       const x = Math.round(particle.x);
       const y = Math.round(particle.y);
       if (x < 0 || y < 0 || x >= this.size || y >= this.size) continue;
@@ -491,14 +580,16 @@ class ParticleWorld {
       let b = originalBlue;
       if (pose) {
         const offset = index * 3 + 2;
-        const sourceColor = TARGET_COLOR_PALETTE[pose.from[offset]];
-        const nextColor = TARGET_COLOR_PALETTE[pose.to[offset]];
+        const sourceShade = pose.from[offset] || pose.to[offset];
+        const nextShade = pose.to[offset] || pose.from[offset];
+        const sourceColor = TARGET_COLOR_PALETTE[sourceShade];
+        const nextColor = TARGET_COLOR_PALETTE[nextShade];
         // The reference's gray/black shading moves WITH its target pixels.
         r = sourceColor[0] + (nextColor[0] - sourceColor[0]) * pose.blend;
         g = sourceColor[1] + (nextColor[1] - sourceColor[1]) * pose.blend;
         b = sourceColor[2] + (nextColor[2] - sourceColor[2]) * pose.blend;
       }
-      const opacity = (a / 255) * ((this.anatomy ? this.roles.has(particle, 'blink') : particle.eye) ? 1 - blink * 0.98 : 1);
+      const opacity = (a / 255) * activity * ((this.anatomy ? this.roles.has(particle, 'blink') : particle.eye) ? 1 - blink * 0.98 : 1);
       if (opacity <= 0) continue;
 
       const pixelIndex = y * this.size + x;

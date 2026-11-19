@@ -426,3 +426,12 @@ window.persona.dispatch({ type: 'animation', action: 'particle-count', count: 80
 ```
 
 - À **3×** sur un écran 60 Hz, les 43 poses demeurent dans l’asset mais certaines peuvent ne pas être affichées individuellement : le lecteur avance en temps réel et interpole entre les poses disponibles.
+
+
+## V2.5 — Population dynamique par frame
+
+Le lecteur `idle` conserve les **43 frames et leurs 40 ms par image**. Chaque pose affiche maintenant autant de particules qu'elle possède de pixels visibles : **13 623 à 16 103** sur les assets actuels. Un **pool réutilisable de 16 162 points** évite les allocations par image. Les identifiants, rôles et matériaux persistent lorsque des points disparaissent puis réapparaissent.
+
+Le menu **« Limite de particules visibles »** offre le mode **Automatique** (fidélité aux poses d'origine) et des plafonds de qualité. Un plafond conserve les mêmes points sélectionnés pendant toute la boucle, y compris ceux de l'œil ; il ne raccourcit ni les frames ni leur durée. Le compteur indique les points effectivement visibles plutôt que la capacité du pool. L'anti-scintillement est désactivé par défaut pour ne pas réintroduire de pixels qui doivent légitimement disparaître.
+
+Détails d'algorithme, format, validation et limites : [docs/technical-information/dynamic-particle-population.md](docs/technical-information/dynamic-particle-population.md).

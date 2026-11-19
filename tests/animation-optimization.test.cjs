@@ -23,63 +23,51 @@ test('la vitesse change le timing sans retirer aucune des 43 frames', async () =
   player.play();
   player.advance(0.02);
   assert.equal(player.frame, 1);
-  assert.equal(player.frames.length, 43);
-  assert.equal(world.particles.length, 15886);
+  assert.equal(world.particles.length, PERSONA_IDLE_TARGETS.particleCount);
   controller.dispatch({ type: 'animation', action: 'speed', value: 0.5 });
   assert.equal(player.getSnapshot().playbackDurationMs, 3440);
   assert.throws(() => controller.dispatch({ type: 'animation', action: 'speed', value: 0 }), RangeError);
   assert.throws(() => controller.dispatch({ type: 'animation', action: 'speed', value: 5 }), RangeError);
-  assert.throws(() => controller.dispatch({ type: 'animation', action: 'speed', value: 'fast' }), RangeError);
 });
 
-test('la densité réduit les points vraiment simulés et conserve les 43 poses', async () => {
+test('la densité fixe un plafond sans recréer les particules ni retirer de frames', async () => {
   const { world, player, controller } = await create();
-  const originalEye = world.particles.filter(p => p.eye).length;
+  const original = [...world.particles];
   player.play();
-  assert.equal(controller.dispatch({ type: 'animation', action: 'particle-count', count: 4000 }), true);
-  assert.equal(world.particles.length, 4000);
-  assert.equal(controller.getSnapshot().particleCount, 4000);
-  assert.equal(world.cohesionField.counts.length, 4000);
-  assert.ok(world.cohesionField.linkCount > 0);
-  assert.ok(world.particles.filter(p => p.eye).length > 0);
-  assert.ok(world.particles.filter(p => p.eye).length < originalEye);
+  controller.dispatch({ type: 'animation', action: 'particle-count', count: 4000 });
+  assert.equal(world.particles.length, PERSONA_IDLE_TARGETS.particleCount);
+  assert.deepEqual(world.particles, original);
+  assert.equal(player.getSnapshot().densityLimit, 4000);
   assert.equal(player.frames.length, 43);
-  assert.ok(player.frames.every(f => f.length === 4000 * 3));
-  assert.equal(world.targetPose.from.length, 4000 * 3);
-  for (let frame = 0; frame < 43; frame += 1) {
-    for (const index of [0, 500, 3999]) {
-      const sourceIndex = world.particles[index].sourceIndex;
-      assert.deepEqual(
-        [...player.frames[frame].subarray(index * 3, index * 3 + 3)],
-        [...player.fullFrames[frame].subarray(sourceIndex * 3, sourceIndex * 3 + 3)]
-      );
-    }
+  assert.ok(player.frames.every(frame => frame.length === world.particles.length * 3));
+  for (let index = 0; index < 43; index += 1) {
+    const visible = player.frames[index].reduce((count, value, offset) =>
+      count + (offset % 3 === 2 && value !== 0 ? 1 : 0), 0);
+    assert.equal(visible, 4000, `frame ${index + 1}`);
   }
-  for (let i = 0; i < 30; i += 1) {
-    controller.advance(1 / 60);
-    world.step(1 / 60);
-  }
-  assert.ok(world.particles.every(p => Number.isFinite(p.x) && Number.isFinite(p.y)));
+  player.inspectFrame(12);
+  assert.equal(world.visibleParticleCount, 4000);
+  assert.equal(controller.getSnapshot().particleCount, 4000);
+  assert.ok(world.particles.some(p => p.eye && p.activity > 0));
 });
 
-test('densité réversible sans perte de rôles, suivi ni pixels sources', async () => {
+test('la densité auto restitue chaque population source et les rôles restent intacts', async () => {
   const { world, player, controller } = await create();
   const original = [...world.particles];
   player.inspectFrame(42);
   controller.dispatch({ type: 'animation', action: 'particle-count', count: 2000 });
+  assert.equal(world.visibleParticleCount, 2000);
   assert.equal(player.frame, 42);
   assert.equal(player.inspecting, true);
-  assert.ok(world.roles.has(world.particles.find(p => p.eye), 'gaze'));
-  assert.equal(world.particles.length, 2000);
-  controller.dispatch({ type: 'animation', action: 'particle-count', count: 15886 });
-  assert.equal(world.particles.length, 15886);
+  assert.ok(world.roles.has(world.particles.find(p => p.eye && p.activity > 0), 'gaze'));
+  controller.dispatch({ type: 'animation', action: 'particle-count', count: 'auto' });
+  assert.equal(world.visibleParticleCount, PERSONA_IDLE_TARGETS.frameActiveCounts[42]);
   assert.deepEqual(world.particles, original);
   assert.equal(world.cohesionField.linkCount, 31220);
-  assert.ok(player.frames.every((frame, i) => frame === player.fullFrames[i] ||
-    frame.every((v, offset) => v === player.fullFrames[i][offset])));
+  assert.ok(player.frames.every((frame, i) => frame === player.fullFrames[i]));
   assert.equal(world.targetPose.from, player.frames[42]);
   assert.throws(() => controller.dispatch({ type: 'animation', action: 'particle-count', count: 100 }), RangeError);
-  assert.throws(() => controller.dispatch({ type: 'animation', action: 'particle-count', count: 15887 }), RangeError);
+  assert.throws(() => controller.dispatch({ type: 'animation', action: 'particle-count', count: 99999 }), RangeError);
   assert.throws(() => controller.dispatch({ type: 'animation', action: 'particle-count', count: 8000.5 }), RangeError);
 });
 

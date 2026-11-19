@@ -206,7 +206,8 @@ class BehaviorController {
       voiceLevel: this.voiceLevel,
       effect: this.world.mode,
       paused: this.world.paused,
-      particleCount: this.world.particles.length,
+      particleCount: this.world.dynamicPopulation ? this.world.visibleParticleCount : this.world.particles.length,
+      ...(this.world.dynamicPopulation ? { particleCapacity: this.world.particles.length } : {}),
       ...(this.animationPlayer ? { animation: this.animationPlayer.getSnapshot() } : {}),
       ...(this.roleMotionPlayer ? { roleMotion: this.roleMotionPlayer.getSnapshot() } : {}),
     });
