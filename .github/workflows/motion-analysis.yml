@@ -1,0 +1,47 @@
+name: Motion analysis V1
+
+on:
+  push:
+    branches:
+      - develop
+      - feature/motion-analysis-v1
+    paths:
+      - .github/workflows/motion-analysis.yml
+      - tools/analyze_motion.cjs
+      - tools/motion_analysis/**
+      - tests/**
+      - assets/animations/idle-targets.js
+      - assets/persona-map.js
+      - assets/persona-anatomy.js
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify the Node test suite
+        run: node --test tests/*.test.cjs
+      - name: Generate and validate the motion profile
+        run: |
+          node tools/analyze_motion.cjs
+          node tools/analyze_motion.cjs --check
+      - name: Commit the generated JSON on the feature branch
+        if: github.ref_name == 'feature/motion-analysis-v1' && github.event_name == 'push'
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add assets/animations/analysis/idle.motion.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'data: generate idle motion analysis [skip ci]'
+            git push
+          fi
+      - name: Verify generated JSON is committed on develop
+        if: github.ref_name == 'develop'
+        run: git diff --exit-code -- assets/animations/analysis/idle.motion.json
