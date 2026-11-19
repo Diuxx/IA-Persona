@@ -41,3 +41,18 @@ test('docs/PROJECT.md remains identical to its owner-approved initial version', 
     .digest('hex');
   assert.equal(gitBlobSha, 'a293486b81f302d0fbfdb91f285218a4956c786e');
 });
+
+test('the manual behavior controls are absent while the state API stays available', () => {
+  const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+  const app = fs.readFileSync(path.join(ROOT, 'src/app.js'), 'utf8');
+
+  for (const id of ['behavior-state', 'behavior-energy', 'voice-level']) {
+    assert.doesNotMatch(html, new RegExp(`id="${id}"`));
+    assert.doesNotMatch(app, new RegExp(`querySelector\\(['"]#${id}['"]\\)`));
+  }
+
+  const world = new ParticleWorld(PERSONA_PIXEL_MAP, { anatomy: PERSONA_ANATOMY, seed: 34 });
+  const controller = new BehaviorController(world);
+  assert.equal(controller.dispatch({ type: 'state', value: 'listening' }), true);
+  assert.equal(controller.getSnapshot().state, 'listening');
+});
