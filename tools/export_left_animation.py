@@ -15,7 +15,7 @@ Design (see docs/left-animation-v1.md):
   0..255 range used by the idle encoding.
 
 The compiled clip is one-shot: no loop, no automatic return to frame 1. The
-final pose is held by the runtime.
+final pose is briefly preserved by the runtime before the controller switches to idle.
 """
 from __future__ import annotations
 

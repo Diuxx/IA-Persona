@@ -3,6 +3,8 @@
  * Sans Canvas, sans image chargée et sans dépendance externe : testable dans Node.js.
  */
 const PARTICLE_STAGE_SIZE = 400;
+// Maximum physical tracking speed: 11.5 px per fixed 1/60 s step (below the 12 px regression limit).
+const MAX_TARGET_POSE_SPEED = 690;
 const TARGET_COLOR_PALETTE = [null, [6, 6, 8], [51, 51, 54], [224, 224, 222]];
 const localAssignAnatomy = typeof module !== 'undefined' && module.exports
   ? require('./anatomy.js').assignAnatomy
@@ -504,6 +506,8 @@ class ParticleWorld {
     const baseFriction = Math.exp(-this.damping * dt);
 
     const pose = this.targetPose;
+    const maxPoseTravel = MAX_TARGET_POSE_SPEED * dt;
+    const maxPoseTravelSquared = maxPoseTravel * maxPoseTravel;
     // The reference pose directs the movement; cohesion is still present but
     // must not pull the animated silhouette back toward the static source.
     const cohesionScale = pose ? 0 : 1; // Reference frames already encode the silhouette.
@@ -512,6 +516,8 @@ class ParticleWorld {
     for (let index = 0; index < this.particles.length; index += 1) {
       const particle = this.particles[index];
       if (this.dynamicPopulation && (particle.activity ?? 0) <= 0) continue;
+      const previousX = particle.x;
+      const previousY = particle.y;
       const material = particle.material;
       const wave = material?.wave ?? 1;
       const breath = material?.breath ?? 1;
@@ -562,6 +568,20 @@ class ParticleWorld {
         particle.y += (targetY - particle.y) * follow;
         particle.vx *= 1 - follow;
         particle.vy *= 1 - follow;
+      }
+      if (pose && this.mode === 'idle') {
+        const stepX = particle.x - previousX;
+        const stepY = particle.y - previousY;
+        const distanceSquared = stepX * stepX + stepY * stepY;
+        if (distanceSquared > maxPoseTravelSquared) {
+          // Bad offline correspondences must not teleport a persistent visible identity.
+          // Limiting physical travel preserves continuity; the target is still followed on later steps.
+          const fraction = maxPoseTravel / Math.sqrt(distanceSquared);
+          particle.x = previousX + stepX * fraction;
+          particle.y = previousY + stepY * fraction;
+          particle.vx *= fraction;
+          particle.vy *= fraction;
+        }
       }
     }
   }

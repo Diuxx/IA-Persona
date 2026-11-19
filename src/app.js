@@ -3,7 +3,7 @@ const canvas = document.querySelector('#mascot');
 const context = canvas.getContext('2d', { alpha: true });
 const world = new ParticleWorld(PERSONA_PIXEL_MAP, { anatomy: PERSONA_ANATOMY });
 let controller;
-// The clip currently selected by the controller (idle or left) drives the inspector.
+// The clip currently selected by the controller (idle, left or right) drives the inspector.
 const activeClip = () => controller.animationPlayer;
 async function initializePersona() {
   const [idlePlayer, leftPlayer, rightPlayer] = await TargetAnimationPlayer.createClips(
@@ -121,7 +121,7 @@ function syncAnimationControls() {
   metrics.updateParticleCount(animation.visibleCount);
   particleDensityControl.value = animation.densityLimit === null ? 'auto' : String(animation.densityLimit);
   const oneShot = animation.kind === 'one-shot';
-  // The inspector follows the active clip: 43 frames for idle, 34 for left.
+  // The inspector follows the active clip: 43 frames for idle, 36 for left/right.
   idleFrameControl.max = String(animation.frameCount);
   idleLoopEndControl.max = String(animation.frameCount);
   idleFrameControl.value = String(animation.frame + 1);
@@ -132,7 +132,7 @@ function syncAnimationControls() {
   idleLoopEndValue.textContent = `${animation.loopEndFrame + 1} / ${animation.frameCount}`;
   idleLoopEndControl.disabled = oneShot;
   idleLoopDuration.textContent = oneShot
-    ? `Lecture unique de ${(animation.playbackDurationMs / 1000).toFixed(2).replace('.', ',')} s, puis pose finale maintenue`
+    ? `Lecture unique de ${(animation.playbackDurationMs / 1000).toFixed(2).replace('.', ',')} s, puis retour à l’idle`
     : `Boucle de ${(animation.playbackDurationMs / 1000).toFixed(2).replace('.', ',')} s · ${(animation.frameDurationMs / animation.speed).toFixed(1).replace('.', ',')} ms/frame`;
   animationStatus.textContent = animation.inspecting
     ? `Frame ${animation.frame + 1} figée · prête pour inspection`

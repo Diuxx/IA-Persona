@@ -17,6 +17,7 @@
   <script defer src="./assets/animations/idle-targets.js"></script>
   <script defer src="./assets/animations/left-targets.js"></script>
   <script defer src="./assets/animations/right-targets.js"></script>
+  <script defer src="./src/animation/target-animation-codec.js"></script>
   <script defer src="./src/animation/target-animation-player.js"></script>
 <script defer src="./src/animation/pixel-stabilizer.js"></script>
   <script defer src="./src/ui/controls.js"></script>
@@ -57,7 +58,7 @@
           <section class="controls-panel" id="panel-animations" role="tabpanel" aria-labelledby="tab-animations">
 <div aria-label="Animation par convergence" class="target-animation-controls">
 <p class="eyebrow">ANIMATION CIBLE / IDLE</p>
-<p class="hint">Les PNG sources sont précompilés en poses cibles ; les particules se déplacent entre ces poses grâce à la simulation. « Aller à gauche » joue les 34 poses une seule fois, puis garde la pose finale.</p>
+<p class="hint">Les PNG sources sont précompilés en poses cibles ; les particules se déplacent entre ces poses grâce à la simulation. « Aller à gauche » lit 36 poses compilées, puis retourne automatiquement à l’idle.</p>
 <div class="behavior-actions">
 <button id="play-idle" type="button">Jouer l’idle</button>
 <button id="play-left" type="button">Aller à gauche</button>

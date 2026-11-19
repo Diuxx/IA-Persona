@@ -170,7 +170,7 @@ test('left se termine, puis passe automatiquement à idle sans relâcher la pose
   assert.equal(scene.left.held, false);
 });
 
-test('left ne revient jamais à sa première frame avant la fin, et lit les 47 frames dans l’ordre', async () => {
+test('left ne revient jamais à sa première frame avant la fin, et lit les 36 frames dans l’ordre', async () => {
   const scene = await createScene();
   scene.left.play();
   const seen = [];
@@ -338,7 +338,7 @@ test('une limite de particules s’applique aux identités de left sans changer 
   assert.ok(scene.world.visibleParticleCount > 8000);
 });
 
-test('les 47 poses de left restent dans la scène et ne dépassent jamais les yeux disponibles', async () => {
+test('les 36 poses de left restent dans la scène et ne dépassent jamais les yeux disponibles', async () => {
   const scene = await createScene();
   const eyeIdentities = scene.world.particles.filter(particle => particle.eye).length;
   // The eye pool is larger than the 375 eyes of the map: the compiler clones source eyes.
@@ -369,4 +369,35 @@ test('les particules hors scène et les frames incohérentes sont refusées', as
     () => decodeAnimation({ ...PERSONA_LEFT_TARGETS, sourceChecksum: 1 }, world),
     /carte source/
   );
+});
+
+// Exercise the entire clip, including the hand-over to idle, not only its first 0.5 seconds.
+test('left et right : aucune identité continuellement visible ne téléporte durant la lecture et le retour idle', async () => {
+  for (const name of ['left', 'right']) {
+    const scene = await createScene();
+    scene.controller.dispatch({ type: 'animation', name: 'idle' });
+    run(scene, 0.3);
+    scene.controller.dispatch({ type: 'animation', name });
+    const particles = scene.world.particles;
+    const previous = new Float64Array(particles.length * 3);
+    let maximum = 0;
+    for (let step = 0; step < 180; step += 1) {
+      for (let i = 0; i < particles.length; i += 1) {
+        const offset = i * 3;
+        previous[offset] = particles[i].x;
+        previous[offset + 1] = particles[i].y;
+        previous[offset + 2] = particles[i].activity ?? 0;
+      }
+      scene.controller.advance(FRAME);
+      scene.world.step(FRAME);
+      for (let i = 0; i < particles.length; i += 1) {
+        const offset = i * 3;
+        if (previous[offset + 2] < 1 || (particles[i].activity ?? 0) < 1) continue;
+        const movement = Math.hypot(particles[i].x - previous[offset], particles[i].y - previous[offset + 1]);
+        maximum = Math.max(maximum, movement);
+      }
+      assert.ok(maximum < 12, `${name} : déplacement de ${maximum.toFixed(2)} px par pas (étape ${step})`);
+    }
+    assert.equal(scene.controller.animationPlayer, scene.idle, `${name} doit revenir à idle`);
+  }
 });
