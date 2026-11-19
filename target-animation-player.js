@@ -114,10 +114,12 @@ class TargetAnimationPlayer {
   constructor(world, animation, frames) {
     this.world = world;
     this.animation = animation;
+    this.fullFrames = frames;
     this.frames = frames;
     this.elapsed = 0;
     this.frame = 0;
     this.loopEndFrame = frames.length - 1;
+    this.speed = 1;
     this.loop = true;
     this.playing = false;
     this.inspecting = false;
@@ -135,8 +137,20 @@ class TargetAnimationPlayer {
     return this.animation.durationMs / this.frames.length;
   }
 
-  get playbackDurationMs() {
+  get sourcePlaybackDurationMs() {
     return (this.loopEndFrame + 1) * this.frameDurationMs;
+  }
+
+  get playbackDurationMs() {
+    return this.sourcePlaybackDurationMs / this.speed;
+  }
+
+  setSpeed(speed) {
+    if (!Number.isFinite(speed) || speed < 0.25 || speed > 3) {
+      throw new RangeError('Vitesse d’animation hors limites (0,25–3×).');
+    }
+    this.speed = speed;
+    return true;
   }
 
   play({ loop = true } = {}) {
@@ -177,13 +191,32 @@ class TargetAnimationPlayer {
     return true;
   }
 
-  /** Non-destructive loop trimming: the original 40 frames remain available. */
+  /** Rebuild only active frame targets; retain all 43 source frames and particle identities. */
+  setParticleCount(count) {
+    const changed = this.world.setParticleCount(count);
+    if (!changed) return false;
+    this.frames = this.fullFrames.map(sourceFrame => {
+      const compact = new Uint8Array(count * 3);
+      for (let index = 0; index < count; index += 1) {
+        const sourceOffset = this.world.particles[index].sourceIndex * 3;
+        compact.set(sourceFrame.subarray(sourceOffset, sourceOffset + 3), index * 3);
+      }
+      return compact;
+    });
+    if (this.playing) {
+      this.applyPose();
+      this.world.snapToTargetPose();
+    }
+    return true;
+  }
+
+  /** Non-destructive loop trimming: all 43 original frames remain available. */
   setLoopEndFrame(index) {
     this.validateFrame(index);
     if (index < 1) throw new RangeError('La boucle doit contenir au moins deux frames.');
     this.loopEndFrame = index;
     if (this.playing && !this.inspecting) {
-      if (this.elapsed * 1000 >= this.playbackDurationMs) this.elapsed = 0;
+      if (this.elapsed * 1000 >= this.sourcePlaybackDurationMs) this.elapsed = 0;
       this.applyPose();
     }
     return true;
@@ -208,8 +241,8 @@ class TargetAnimationPlayer {
       throw new RangeError('Durée d’animation invalide.');
     }
     if (!this.playing || this.inspecting || this.world.paused || deltaSeconds === 0) return;
-    const duration = this.playbackDurationMs / 1000;
-    this.elapsed += deltaSeconds;
+    const duration = this.sourcePlaybackDurationMs / 1000;
+    this.elapsed += deltaSeconds * this.speed;
     if (this.elapsed >= duration && !this.loop) {
       this.stop();
       return;
@@ -240,9 +273,10 @@ class TargetAnimationPlayer {
       frame: this.frame,
       frameCount: this.frames.length,
       frameDurationMs: this.frameDurationMs,
+      speed: this.speed,
       loopEndFrame: this.loopEndFrame,
       playbackDurationMs: this.playbackDurationMs,
-      progress: this.elapsed / (this.playbackDurationMs / 1000),
+      progress: this.elapsed / (this.sourcePlaybackDurationMs / 1000),
       loop: this.loop,
     });
   }
