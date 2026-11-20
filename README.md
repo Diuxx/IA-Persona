@@ -102,8 +102,8 @@ Pour éviter qu’une mauvaise correspondance entre pixels ne projette une parti
 à **11,5 px par pas fixe de 1/60 s**. La limitation ne modifie ni les PNG ni les
 poses, mais peut créer un léger retard visuel sur un déplacement extrême. Les
 contrôles de continuité couvrent désormais l’ensemble des deux clips et leur
-retour à l’idle. La suite GitHub Actions du 19 novembre 2026 a validé **138 tests sur 138**
-([résultat](https://github.com/Diuxx/IA-Persona/actions/runs/44611242597/job/135868089224)).
+retour à l’idle. La suite GitHub Actions du 19 novembre 2026 a validé **139 tests sur 139**
+([résultat](https://github.com/Diuxx/IA-Persona/actions/runs/44718779686/job/136228832873)).
 La validation du rendu et des FPS en navigateur reste nécessaire.
 
 ## Interactions
