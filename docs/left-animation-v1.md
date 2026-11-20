@@ -227,11 +227,12 @@ mais ne remplace pas une inspection visuelle et des mesures FPS en navigateur.
 | `assets/animations/left-targets.js` | données compilées de `left` (généré) |
 | `assets/animations/right-targets.js` | données compilées de `right` (généré) |
 | `src/engine/particle-world.js` | pool partagé extensible, extras d'œil, poses typées, limite de déplacement par pas |
-| `src/animation/target-animation-codec.js` | décodage, validation et vérification des métadonnées et de la population |
-| `src/animation/target-animation-player.js` | clips `loop` et `one-shot`, horloge, complétion, qualité par clip |
+| `src/animation/target-animation-codec.js` | décodage, validation et vérification des métadonnées et de la population, déclarations isolées dans une IIFE |
+| `src/animation/target-animation-player.js` | clips `loop` et `one-shot`, horloge, complétion, qualité par clip, déclarations isolées dans une IIFE |
 | `src/controller/behavior-controller.js` | sélection des clips, passage automatique à idle |
 | `src/app.js`, `index.html` | boutons et inspecteur adaptés |
 | `tests/left-animation.test.cjs` | tests de l'animation gauche et droite |
+| `tests/animation-script-loading.test.cjs` | régression : chargement classique `defer` sans collision de noms entre scripts |
 | `docs/left-animation-v1.md` | ce document |
 
 Les sources PNG (`assets/animations/left-frames.zip`, `idle-frames.zip`) et les données

@@ -90,6 +90,12 @@ Les cibles sont précompilées par `tools/export_left_animation.py` (fichiers
 `left-targets.js` et `right-targets.js`). Le décodage et la validation des données
 se trouvent dans `src/animation/target-animation-codec.js` ; l’horloge, les
 transitions et l’inspection restent dans `target-animation-player.js`.
+Ces deux fichiers utilisent une portée privée (IIFE) car les scripts classiques
+chargés par `index.html` partagent l'espace des déclarations JavaScript ; ils
+exposent uniquement `window.TargetAnimationCodec` et
+`window.TargetAnimationPlayer`. Le test
+`tests/animation-script-loading.test.cjs` reproduit le chargement des scripts
+`defer` dans un contexte partagé pour détecter les collisions de noms.
 
 Pour éviter qu’une mauvaise correspondance entre pixels ne projette une particule
 à travers le Canvas en un pas, le suivi physique des poses limite le déplacement

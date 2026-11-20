@@ -1,4 +1,7 @@
 /** Validate and decode reference frames into persistent particle targets. */
+(() => {
+  'use strict';
+
 const MAX_ANIMATION_FRAMES = 160;
 const MAX_COMPRESSED_BYTES = 5_000_000;
 const MAX_IDENTITIES = 40000;
@@ -193,3 +196,4 @@ if (typeof module !== 'undefined' && module.exports) {
 } else {
   window.TargetAnimationCodec = TargetAnimationCodec;
 }
+})();

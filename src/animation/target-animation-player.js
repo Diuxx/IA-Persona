@@ -2,6 +2,9 @@
  * Playback clock, inspection, quality and pose transitions for particle clips.
  * All decoding and asset validation live in target-animation-codec.js.
  */
+(() => {
+  'use strict';
+
 const { decodeAnimation, adler32 } = typeof module !== 'undefined' && module.exports
   ? require('./target-animation-codec.js')
   : window.TargetAnimationCodec;
@@ -340,3 +343,4 @@ if (typeof module !== 'undefined' && module.exports) {
 } else {
   window.TargetAnimationPlayer = TargetAnimationPlayer;
 }
+})();
