@@ -16,12 +16,14 @@ Dans Animations, choisir « Suivi des particules » :
 
 La position affichée = ancre + écart. Les vitesses sont alors relatives à
 l'ancre. Les points visibles restent limités à 690 px/s (11,5 px par pas
-à 60 Hz en lecture normale). Un écart causé par le bridage est récupéré
-progressivement, pas effacé par téléportation. Les effets reveal/hit
+à 60 Hz en lecture normale). L'ancre avance vers la cible à cette vitesse maximale, sans transformer son
+retard de sécurité en déformation physique ; l'écart physique est intégré
+séparément. La position finale est elle aussi bridée en lecture normale.
+Les diagnostics comptent chaque identité bridée une fois par pas. Les effets reveal/hit
 conservent la possibilité de disperser les points ; les champs utilisent
 les positions réelles et ajoutent une impulsion. Comme auparavant, les
-effets explicites et l'inspection exacte ne sont pas limités par le cap
-de lecture normale. La transition de mode conserve positions et vitesses,
+effets explicites ne sont pas limités par le cap de position finale
+(l'ancre reste bornée) ; l'inspection exacte reste hors simulation. La transition de mode conserve positions et vitesses,
 les ancres sont recalées sur la cible actuelle pour préserver les écarts. Les points invisibles
 n'imposent pas d'identité visible continue ; une apparition peut être
 initialisée à la cible. Stop/reset libèrent les ancres.

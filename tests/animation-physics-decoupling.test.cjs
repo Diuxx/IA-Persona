@@ -74,8 +74,10 @@ test('the safety cap remains active on a large reference displacement', () => {
   assert.ok(Math.abs(p.x - x - 11.5) < 1e-8);
   assert.equal(world.lastTrackingLimitedCount, world.particles.length);
   assert.ok(world.getTrackingDiagnostics().meanErrorPx > 40);
-  step(world, 180);
-  assert.ok(world.getTrackingDiagnostics().meanErrorPx < 0.1);
+  step(world, 5);
+  assert.equal(world.getTrackingDiagnostics().maxErrorPx, 0);
+  assert.equal(world.lastTrackingLimitedCount, 0);
+  assert.ok(world.particles.every(p => p.vx === 0 && p.vy === 0));
 });
 
 test('physical impulses displace particles relative to the moving animation and recover', () => {

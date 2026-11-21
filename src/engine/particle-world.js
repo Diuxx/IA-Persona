@@ -540,23 +540,35 @@ class ParticleWorld {
   /** Integrate only the displacement relative to the animation anchor.
    * Motion of the anchor itself adds no physical velocity or spring lag.
    */
-  stepDecoupledParticle(particle, index, pose, dt) {
+  stepDecoupledParticle(particle, index, pose, dt, maxDistance) {
     const targetX = this.targetCoordinate(pose, index * 3, 0);
     const targetY = this.targetCoordinate(pose, index * 3, 1);
     const anchorX = particle.animationAnchorX ?? targetX;
     const anchorY = particle.animationAnchorY ?? targetY;
     const offsetX = particle.x - anchorX;
     const offsetY = particle.y - anchorY;
+
+    // Limit travel of the animation anchor itself. Otherwise its safety lag
+    // becomes a spring displacement and persists even once the target is reachable.
+    const dx = targetX - anchorX;
+    const dy = targetY - anchorY;
+    const distanceSquared = dx * dx + dy * dy;
+    const limited = distanceSquared > maxDistance * maxDistance;
+    const fraction = limited ? maxDistance / Math.sqrt(distanceSquared) : 1;
+    const nextAnchorX = limited ? anchorX + dx * fraction : targetX;
+    const nextAnchorY = limited ? anchorY + dy * fraction : targetY;
+
     const material = particle.material;
     const recovery = this.getRecoveryFactor();
     const spring = this.stiffness * (material?.spring ?? 1) * (1 + 2 * recovery);
     const damping = Math.exp(-this.damping * (material?.damping ?? 1) * dt);
     particle.vx = (particle.vx - offsetX * spring * dt) * damping;
     particle.vy = (particle.vy - offsetY * spring * dt) * damping;
-    particle.x = targetX + offsetX + particle.vx * dt;
-    particle.y = targetY + offsetY + particle.vy * dt;
-    particle.animationAnchorX = targetX;
-    particle.animationAnchorY = targetY;
+    particle.x = nextAnchorX + offsetX + particle.vx * dt;
+    particle.y = nextAnchorY + offsetY + particle.vy * dt;
+    particle.animationAnchorX = nextAnchorX;
+    particle.animationAnchorY = nextAnchorY;
+    return limited;
   }
 
   /** Preserve the existing visible-identity travel bound during animation playback. */
@@ -564,13 +576,13 @@ class ParticleWorld {
     const dx = particle.x - previousX;
     const dy = particle.y - previousY;
     const squared = dx * dx + dy * dy;
-    if (squared <= maxDistance * maxDistance) return;
+    if (squared <= maxDistance * maxDistance) return false;
     const fraction = maxDistance / Math.sqrt(squared);
     particle.x = previousX + dx * fraction;
     particle.y = previousY + dy * fraction;
     particle.vx *= fraction;
     particle.vy *= fraction;
-    this.lastTrackingLimitedCount += 1;
+    return true;
   }
 
   step(deltaSeconds) {
@@ -620,8 +632,10 @@ class ParticleWorld {
       const previousX = particle.x;
       const previousY = particle.y;
       if (pose && this.animationTracking === 'decoupled') {
-        this.stepDecoupledParticle(particle, index, pose, dt);
-        if (this.mode === 'idle') this.limitTargetTravel(particle, previousX, previousY, maxPoseTravel);
+        const anchorLimited = this.stepDecoupledParticle(particle, index, pose, dt, maxPoseTravel);
+        const physicalLimited = this.mode === 'idle' &&
+          this.limitTargetTravel(particle, previousX, previousY, maxPoseTravel);
+        if (anchorLimited || physicalLimited) this.lastTrackingLimitedCount += 1;
         continue;
       }
       const material = particle.material;
@@ -666,7 +680,9 @@ class ParticleWorld {
         particle.vy *= 1 - follow;
       }
       if (pose && this.mode === 'idle') {
-        this.limitTargetTravel(particle, previousX, previousY, maxPoseTravel);
+        if (this.limitTargetTravel(particle, previousX, previousY, maxPoseTravel)) {
+          this.lastTrackingLimitedCount += 1;
+        }
       }
     }
   }
