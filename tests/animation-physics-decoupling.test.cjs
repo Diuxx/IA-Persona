@@ -33,12 +33,16 @@ test('legacy remains default and switches preserve positions and velocities', ()
   const world = createWorld();
   assert.equal(world.animationTracking, 'legacy');
   world.setTargetPose(staticPose(world));
-  world.explode();
+  world.reveal();
   const p = world.particles[0];
   const before = [p.x, p.y, p.vx, p.vy];
   assert.equal(world.setAnimationTracking('decoupled'), true);
   assert.deepEqual([p.x, p.y, p.vx, p.vy], before);
-  assert.equal(world.mode, 'explode');
+  assert.equal(world.mode, 'reveal');
+  const error = world.getTrackingDiagnostics().meanErrorPx;
+  step(world);
+  assert.ok(world.getTrackingDiagnostics().meanErrorPx > error * 0.8,
+    'switching during reveal must not erase physical displacement');
   assert.equal(world.setAnimationTracking('decoupled'), false);
   assert.throws(() => world.setAnimationTracking('invalid'), RangeError);
   assert.equal(world.setAnimationTracking('legacy'), true);

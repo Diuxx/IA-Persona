@@ -226,7 +226,7 @@ class ParticleWorld {
       for (const particle of this.particles) counts[particle.region] += 1;
       this.anatomy.counts = counts;
     }
-    this.targetPose = null; // Animation player rebinds the compact poses immediately.
+    this.setTargetPose(null); // Animation player rebinds the compact poses immediately.
     return true;
   }
 
@@ -239,9 +239,17 @@ class ParticleWorld {
     this.animationTracking = mode;
     this.lastTrackingLimitedCount = 0;
     for (const particle of this.allParticles) {
-      // The next simulation step establishes a new anchor from the live position.
       particle.animationAnchorX = null;
       particle.animationAnchorY = null;
+    }
+    if (mode === 'decoupled' && this.targetPose) {
+      // Preserve the current offset from the reference, including an ongoing impact.
+      for (let i = 0; i < this.particles.length; i += 1) {
+        const particle = this.particles[i];
+        if (this.dynamicPopulation && !(particle.activity > 0)) continue;
+        particle.animationAnchorX = this.targetCoordinate(this.targetPose, i * 3, 0);
+        particle.animationAnchorY = this.targetCoordinate(this.targetPose, i * 3, 1);
+      }
     }
     return true;
   }
@@ -535,8 +543,8 @@ class ParticleWorld {
   stepDecoupledParticle(particle, index, pose, dt) {
     const targetX = this.targetCoordinate(pose, index * 3, 0);
     const targetY = this.targetCoordinate(pose, index * 3, 1);
-    const anchorX = particle.animationAnchorX ?? particle.x;
-    const anchorY = particle.animationAnchorY ?? particle.y;
+    const anchorX = particle.animationAnchorX ?? targetX;
+    const anchorY = particle.animationAnchorY ?? targetY;
     const offsetX = particle.x - anchorX;
     const offsetY = particle.y - anchorY;
     const material = particle.material;

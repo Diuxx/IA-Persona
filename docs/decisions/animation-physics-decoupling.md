@@ -22,7 +22,7 @@ conservent la possibilité de disperser les points ; les champs utilisent
 les positions réelles et ajoutent une impulsion. Comme auparavant, les
 effets explicites et l'inspection exacte ne sont pas limités par le cap
 de lecture normale. La transition de mode conserve positions et vitesses,
-les ancres sont réinitialisées au prochain pas. Les points invisibles
+les ancres sont recalées sur la cible actuelle pour préserver les écarts. Les points invisibles
 n'imposent pas d'identité visible continue ; une apparition peut être
 initialisée à la cible. Stop/reset libèrent les ancres.
 Le réglage reste valable pendant la session, y compris après reset.
