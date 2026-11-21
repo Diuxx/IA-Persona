@@ -3,6 +3,8 @@
  * Sans Canvas, sans image chargée et sans dépendance externe : testable dans Node.js.
  */
 const PARTICLE_STAGE_SIZE = 400;
+// Maximum physical tracking speed: 11.5 px per fixed 1/60 s step (below the 12 px regression limit).
+const MAX_TARGET_POSE_SPEED = 690;
 const TARGET_COLOR_PALETTE = [null, [6, 6, 8], [51, 51, 54], [224, 224, 222]];
 const localAssignAnatomy = typeof module !== 'undefined' && module.exports
   ? require('./anatomy.js').assignAnatomy
@@ -128,6 +130,7 @@ class ParticleWorld {
     });
     this.sourceParticleCount = this.allParticles.length;
     this.dynamicPopulation = false;
+    this.extraSourceIndices = []; // Source of each pool identity past the static particles, in order.
     this.densityLimit = null; // null = exactly the visible population of each reference pose.
     this.visibleParticleCount = this.sourceParticleCount;
     this.particles = this.allParticles;
@@ -141,29 +144,46 @@ class ParticleWorld {
     );
   }
 
-  /** Expand once, not every frame. Extra body particles reuse a nearby source's material and roles. */
+  /**
+   * Grow the reusable pool to a clip's identities (once, not every frame).
+   * Clips share ONE pool: a clip's extra identities must begin with the extras
+   * already in the pool, so a smaller clip is a prefix of a larger one and keeps
+   * the same particle identities. Extras are clones of source particles; eye
+   * sources may be cloned too (the left clip shows more white pixels than the map).
+   */
   enableDynamicPopulation(animation) {
-    if (this.dynamicPopulation) {
-      if (this.allParticles.length !== animation.particleCount) {
-        throw new RangeError('Capacité du pool incompatible.');
-      }
-      return;
-    }
-    if (this.particles.length !== this.sourceParticleCount || !Array.isArray(animation.extraSources) ||
+    if (!Array.isArray(animation.extraSources) ||
         animation.extraSources.length !== animation.particleCount - this.sourceParticleCount ||
         animation.particleCount > 40000) {
       throw new RangeError('Définition du pool dynamique invalide.');
     }
     for (const sourceIndex of animation.extraSources) {
-      if (!Number.isInteger(sourceIndex) || sourceIndex < 0 || sourceIndex >= this.sourceParticleCount ||
-          this.allParticles[sourceIndex].eye) {
+      if (!Number.isInteger(sourceIndex) || sourceIndex < 0 || sourceIndex >= this.sourceParticleCount) {
         throw new RangeError('Source d’une particule supplémentaire invalide.');
       }
     }
-    for (const sourceIndex of animation.extraSources) {
+    if (!this.dynamicPopulation) {
+      if (this.particles.length !== this.sourceParticleCount) {
+        throw new RangeError('Définition du pool dynamique invalide.');
+      }
+      this.dynamicPopulation = true;
+      this.visibleParticleCount = 0;
+      this.extraSourceIndices = [];
+    }
+    const current = this.extraSourceIndices;
+    // The shorter of the two identity lists must be a prefix of the other one.
+    const shared = Math.min(current.length, animation.extraSources.length);
+    for (let i = 0; i < shared; i += 1) {
+      if (animation.extraSources[i] !== current[i]) {
+        throw new RangeError('Population incompatible avec les animations déjà chargées.');
+      }
+    }
+    if (animation.extraSources.length <= current.length) return;
+    for (const sourceIndex of animation.extraSources.slice(current.length)) {
       const source = this.allParticles[sourceIndex];
-      this.allParticles.push({ ...source, sourceIndex: this.allParticles.length,
+      this.allParticles.push({ ...source, x: source.homeX, y: source.homeY, sourceIndex: this.allParticles.length,
         vx: 0, vy: 0, phase: this.random() * Math.PI * 2, activity: 0 });
+      current.push(sourceIndex);
     }
     this.particles = this.allParticles;
     this.particleRank = this.allParticles.map((particle, index) => ({
@@ -171,8 +191,6 @@ class ParticleWorld {
     })).sort((a, b) => a.score - b.score || a.index - b.index);
     // Keep the original physical mesh: new points are attracted by their own spring.
     // The original mesh stays valid; dynamically inactive neighbors are ignored.
-    this.dynamicPopulation = true;
-    this.visibleParticleCount = 0;
   }
 
   /** Change the quality cap; dynamic animations keep the fixed-size reusable pool. */
@@ -238,7 +256,8 @@ class ParticleWorld {
   setTargetPose(pose) {
     if (pose !== null) {
       const length = this.particles.length * 3;
-      if (!(pose.from instanceof Uint8Array) || !(pose.to instanceof Uint8Array) ||
+      // Idle poses are Uint8Array; the left clip uses Int16Array (coordinates leave 0..255).
+      if (!ArrayBuffer.isView(pose.from) || !ArrayBuffer.isView(pose.to) ||
           pose.from.length !== length || pose.to.length !== length ||
           !Number.isFinite(pose.blend) || pose.blend < 0 || pose.blend > 1) {
         throw new TypeError('Disposition cible incompatible avec les particules.');
@@ -487,6 +506,8 @@ class ParticleWorld {
     const baseFriction = Math.exp(-this.damping * dt);
 
     const pose = this.targetPose;
+    const maxPoseTravel = MAX_TARGET_POSE_SPEED * dt;
+    const maxPoseTravelSquared = maxPoseTravel * maxPoseTravel;
     // The reference pose directs the movement; cohesion is still present but
     // must not pull the animated silhouette back toward the static source.
     const cohesionScale = pose ? 0 : 1; // Reference frames already encode the silhouette.
@@ -495,6 +516,8 @@ class ParticleWorld {
     for (let index = 0; index < this.particles.length; index += 1) {
       const particle = this.particles[index];
       if (this.dynamicPopulation && (particle.activity ?? 0) <= 0) continue;
+      const previousX = particle.x;
+      const previousY = particle.y;
       const material = particle.material;
       const wave = material?.wave ?? 1;
       const breath = material?.breath ?? 1;
@@ -545,6 +568,20 @@ class ParticleWorld {
         particle.y += (targetY - particle.y) * follow;
         particle.vx *= 1 - follow;
         particle.vy *= 1 - follow;
+      }
+      if (pose && this.mode === 'idle') {
+        const stepX = particle.x - previousX;
+        const stepY = particle.y - previousY;
+        const distanceSquared = stepX * stepX + stepY * stepY;
+        if (distanceSquared > maxPoseTravelSquared) {
+          // Bad offline correspondences must not teleport a persistent visible identity.
+          // Limiting physical travel preserves continuity; the target is still followed on later steps.
+          const fraction = maxPoseTravel / Math.sqrt(distanceSquared);
+          particle.x = previousX + stepX * fraction;
+          particle.y = previousY + stepY * fraction;
+          particle.vx *= fraction;
+          particle.vy *= fraction;
+        }
       }
     }
   }
