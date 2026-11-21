@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "clips": [
+    {
+      "id": "idle",
+      "family": "idle",
+      "action": "idle",
+      "source": "idle",
+      "mirrorOf": null
+    },
+    {
+      "id": "left",
+      "family": "locomotion",
+      "action": "move-left",
+      "source": "left",
+      "mirrorOf": null
+    },
+    {
+      "id": "right",
+      "family": "locomotion",
+      "action": "move-right",
+      "source": "right",
+      "mirrorOf": "left"
+    }
+  ],
+  "splits": {
+    "train": [
+      "idle"
+    ],
+    "development": [
+      "locomotion"
+    ],
+    "test": []
+  }
+}

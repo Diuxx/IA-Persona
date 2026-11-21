@@ -1,0 +1,57 @@
+name: Motion Dataset V1
+
+on:
+  push:
+    branches:
+      - research/motion-dataset-v1
+    paths:
+      - research/**
+      - .github/workflows/motion-dataset.yml
+      - assets/animations/*-targets.js
+      - assets/persona-map.js
+      - assets/persona-anatomy.js
+      - src/engine/**
+      - src/animation/target-animation-codec.js
+      - tools/motion_analysis/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dataset:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r research/requirements.txt
+      - run: node --test tests/*.test.cjs
+      - run: python -m unittest discover -s research/tests -v
+      - run: python research/build_dataset.py
+      - name: Verify materialized dataset
+        env:
+          PYTHONPATH: research
+        run: |
+          python - <<'PY'
+          from dataset.reader import MotionDataset
+          root = "research/output/dataset"
+          for split, count in (("train", 31), ("development", 48), ("test", 0)):
+              dataset = MotionDataset(root, split)
+              assert len(dataset) == count, (split, len(dataset))
+              for sample in dataset:
+                  assert sample["inputs"]["rasters"].shape == (5, 400, 400)
+                  assert sample["targets"]["rasters"].shape == (8, 400, 400)
+                  assert not sample["inputs"]["transition_valid"][0]
+              print(f"{split}: {count} validated windows")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: motion-dataset-v1
+          path: research/output/dataset/
+          if-no-files-found: error
