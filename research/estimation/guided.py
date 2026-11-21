@@ -16,6 +16,7 @@ def guided_match(a, b, forward, backward, radius):
         motion, accepted, error = consistent_displacement(forward, backward, p)
         # Match around the estimated arrival, not around the original coordinate.
         left, right = match_group(p + motion, q, radius)
+        baseline_left, baseline_right = match_group(p, q, radius)
         lost = np.ones(len(p), bool)
         born = np.ones(len(q), bool)
         lost[left], born[right] = False, False
@@ -24,6 +25,8 @@ def guided_match(a, b, forward, backward, radius):
         diagnostics["eye" if eye else "body"] = {
             "observedStart": len(p), "observedEnd": len(q),
             "matched": len(left), "acceptedFlow": int(accepted.sum()),
+            "baselineMatched": len(baseline_left),
+            "baselineZeroDisplacementMatches": int(np.all(p[baseline_left] == q[baseline_right], axis=1).sum()),
             "meanConsistencyErrorPx": float(error.mean()) if len(error) else None,
             "meanFlowMagnitudePx": float(np.linalg.norm(motion, axis=1).mean()) if len(p) else None,
             "zeroDisplacementMatches": int(np.all(p[left] == q[right], axis=1).sum()),
