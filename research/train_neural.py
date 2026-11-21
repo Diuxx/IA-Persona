@@ -25,6 +25,7 @@ def main():
     parser.add_argument("--seed", type=int, default=2026)
     parser.add_argument("--threads", type=int, default=2)
     parser.add_argument("--device", choices=("cpu", "cuda"), default="cpu")
+    parser.add_argument("--evaluate-test", action="store_true", help="Evaluate reserved test only after model selection")
     args = parser.parse_args()
     if (min(args.epochs, args.batch_size, args.sanity_steps, args.width, args.threads) < 1
             or not np.isfinite(args.learning_rate) or args.learning_rate <= 0
@@ -58,13 +59,14 @@ def main():
     results = {}
     # The frozen model is evaluated on train (memorization) and development
     # (exploratory transfer); no independent test claims with this corpus.
-    for split in ("train", "development", "test"):
+    for split in ("train", "development") + (("test",) if args.evaluate_test else ()):
         results[split] = evaluate_split(model, MotionDataset(args.dataset, split),
                                         split, args.output, device)
     report = {"schemaVersion": 1, "datasetManifestSha256": manifest_digest,
               "settings": settings, "parameters": parameter_count,
               "sanity": sanity, "training": history, "splits": results,
-              "independentTestAvailable": bool(results["test"]["windows"])}
+              "independentTestAvailable": dataset.manifest["independentTestAvailable"],
+              "testEvaluated": args.evaluate_test}
     write_json(args.output/"report.json", report)
     print(json.dumps({split: {"windows": value["windows"], "methods": value["methods"]}
                       for split, value in results.items()}, allow_nan=False), flush=True)
