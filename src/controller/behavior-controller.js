@@ -222,10 +222,10 @@ class BehaviorController {
       voiceLevel: this.voiceLevel,
       effect: this.world.mode,
       paused: this.world.paused,
-      animationTracking: this.world.animationTracking,
       particleCount: this.world.dynamicPopulation ? this.world.visibleParticleCount : this.world.particles.length,
       ...(this.world.dynamicPopulation ? { particleCapacity: this.world.particles.length } : {}),
-      ...(this.animationPlayer ? { animation: this.animationPlayer.getSnapshot() } : {}),
+      ...(this.animationPlayer ? { animation: this.animationPlayer.getSnapshot(),
+        animationTracking: this.world.animationTracking } : {}),
     });
   }
 }
