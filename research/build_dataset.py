@@ -37,19 +37,41 @@ def preview(path, arrays, name):
     plt.close(figure)
 
 
-def build(output, registry):
+def load_registered_source(source, registry_path):
+    """Built-in assets, or a local trusted NPZ of new native raster observations."""
+    if source in ("idle", "left", "right"):
+        return load_reference(source)
+    if not source.startswith("npz:"):
+        raise ValueError("Expected built-in clip or npz:relative/path.npz")
+    path = (registry_path.parent/source[4:]).resolve()
+    if path.suffix.lower() != ".npz":
+        raise ValueError("Expected an NPZ raster source")
+    with np.load(path, allow_pickle=False) as data:
+        frames = data["rasters"]
+        duration = float(data["frame_duration_ms"].item())
+        loop = bool(data["loop"].item()) if "loop" in data else False
+    if frames.ndim != 3:
+        raise ValueError("Expected native raster sequence")
+    return frames, {"width": frames.shape[2], "height": frames.shape[1],
+                    "frameDurationMs": duration, "loop": loop,
+                    "sourceSha256": {source: sha256(path)}}
+
+
+def build(output, registry, registry_path=REGISTRY):
     families = validate_registry(registry)
     output.mkdir(parents=True, exist_ok=True)
     clips, windows = [], []
     source_hashes = {}
     for descriptor in registry["clips"]:
         name = descriptor["id"]
-        frames, metadata = load_reference(descriptor["source"])
+        frames, metadata = load_registered_source(descriptor["source"], registry_path)
         arrays, offset = build_clip(frames, metadata["frameDurationMs"])
         raw_digest = hashlib.sha256(arrays["rasters"].tobytes()).hexdigest()
-        previous_family = source_hashes.setdefault(raw_digest, descriptor["family"])
-        if previous_family != descriptor["family"]:
-            raise ValueError("Identical raster clip assigned to different families")
+        mirror_digest = hashlib.sha256(arrays["rasters"][:, :, ::-1].tobytes()).hexdigest()
+        for digest in (raw_digest, mirror_digest):
+            previous_family = source_hashes.setdefault(digest, descriptor["family"])
+            if previous_family != descriptor["family"]:
+                raise ValueError("Identical or mirrored raster clip assigned to different families")
         filename = name+".npz"
         np.savez_compressed(output/filename, **arrays)
         preview(output/(name+".png"), arrays, name)
@@ -107,9 +129,10 @@ def audit(output, manifest):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=ROOT/"research/output/dataset")
+    parser.add_argument("--registry", type=Path, default=REGISTRY)
     args = parser.parse_args()
-    registry = json.loads(REGISTRY.read_text(encoding="utf-8"))
-    build(args.output, registry)
+    registry = json.loads(args.registry.read_text(encoding="utf-8"))
+    build(args.output, registry, args.registry.resolve())
 
 
 if __name__ == "__main__":
