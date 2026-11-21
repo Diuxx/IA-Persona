@@ -12,7 +12,7 @@
   const frame = document.getElementById('frame');
   const play = document.getElementById('play');
   const labels = {linear: 'Linéaire', cubic: 'Cubique', field: 'Champ'};
-  const palette = [255, 25, 125, 245];
+  const palette = [220, 25, 125, 255];
   const surfaces = {};
   for (const name of ['reference', ...methods]) {
     const canvas = document.getElementById(name);
@@ -59,9 +59,12 @@
   let start = null;
   let animation = null;
   function tick(now) {
-    if (!start) start = now - (Number(frame.value)-1)*data.frameDurationMs;
-    frame.value = 1 + Math.floor((now-start)/data.frameDurationMs)%data.reference.length;
-    render();
+    if (start === null) start = now - (Number(frame.value)-1)*data.frameDurationMs;
+    const next = 1 + Math.floor((now-start)/data.frameDurationMs)%data.reference.length;
+    if (next !== Number(frame.value)) {
+      frame.value = next;
+      render();
+    }
     animation = requestAnimationFrame(tick);
   }
   function pause() {
