@@ -179,6 +179,7 @@ class BehaviorController {
     if (!this.animationPlayer) throw new RangeError('Aucune animation cible disponible.');
     if (command.action === 'stop') return this.animationPlayer.stop();
     if (command.action === 'speed') return this.animationPlayer.setSpeed(command.value);
+    if (command.action === 'tracking') return this.world.setAnimationTracking(command.value);
     if (command.action === 'particle-count') return this.animationPlayer.setParticleCount(command.count);
     if (command.action === 'pause') return this.animationPlayer.pauseForInspection();
     if (command.action === 'resume') return this.animationPlayer.resume();
@@ -221,6 +222,7 @@ class BehaviorController {
       voiceLevel: this.voiceLevel,
       effect: this.world.mode,
       paused: this.world.paused,
+      animationTracking: this.world.animationTracking,
       particleCount: this.world.dynamicPopulation ? this.world.visibleParticleCount : this.world.particles.length,
       ...(this.world.dynamicPopulation ? { particleCapacity: this.world.particles.length } : {}),
       ...(this.animationPlayer ? { animation: this.animationPlayer.getSnapshot() } : {}),

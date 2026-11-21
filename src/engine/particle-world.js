@@ -99,6 +99,8 @@ class ParticleWorld {
     // Utilisé uniquement au rendu : réutilisé à chaque frame, sans allocation supplémentaire.
     this.pixelWeights = new Float32Array(size * size);
     this.lastCollisionCount = 0;
+    this.lastTrackingLimitedCount = 0;
+    this.animationTracking = 'legacy';
     this.targetPose = null;
     this.originX = Math.floor((size - map.width) / 2);
     this.originY = Math.floor((size - map.height) / 2);
@@ -125,6 +127,7 @@ class ParticleWorld {
       const homeY = y + this.originY;
       return {
         homeX, homeY, x: homeX, y: homeY, vx: 0, vy: 0,
+        animationAnchorX: null, animationAnchorY: null,
         color, eye, region, material, profile, debugColor, sourceIndex, phase: this.random() * Math.PI * 2,
       };
     });
@@ -182,7 +185,8 @@ class ParticleWorld {
     for (const sourceIndex of animation.extraSources.slice(current.length)) {
       const source = this.allParticles[sourceIndex];
       this.allParticles.push({ ...source, x: source.homeX, y: source.homeY, sourceIndex: this.allParticles.length,
-        vx: 0, vy: 0, phase: this.random() * Math.PI * 2, activity: 0 });
+        vx: 0, vy: 0, animationAnchorX: null, animationAnchorY: null,
+        phase: this.random() * Math.PI * 2, activity: 0 });
       current.push(sourceIndex);
     }
     this.particles = this.allParticles;
@@ -226,25 +230,64 @@ class ParticleWorld {
     return true;
   }
 
-  /** A pose only changes the targets; it never replaces or recreates particles. */
+  /** Switch tracking without moving visible particles or resetting an active impact. */
+  setAnimationTracking(mode) {
+    if (mode !== 'legacy' && mode !== 'decoupled') {
+      throw new RangeError('Mode de suivi d’animation inconnu.');
+    }
+    if (mode === this.animationTracking) return false;
+    this.animationTracking = mode;
+    this.lastTrackingLimitedCount = 0;
+    for (const particle of this.allParticles) {
+      // The next simulation step establishes a new anchor from the live position.
+      particle.animationAnchorX = null;
+      particle.animationAnchorY = null;
+    }
+    return true;
+  }
+
+  /** Sample the current interpolated target; hidden coordinates are never used alone. */
+  targetCoordinate(pose, offset, axis) {
+    const from = pose.from[offset + 2] ? pose.from[offset + axis] : pose.to[offset + axis];
+    const to = pose.to[offset + 2] ? pose.to[offset + axis] : pose.from[offset + axis];
+    return (axis === 0 ? this.originX : this.originY) + from + (to - from) * pose.blend;
+  }
+
+  /** A sampled tracking metric, deliberately outside the per-frame drawing loop. */
+  getTrackingDiagnostics() {
+    if (!this.targetPose) return { meanErrorPx: null, maxErrorPx: null, limitedCount: 0 };
+    let total = 0;
+    let maximum = 0;
+    let count = 0;
+    const pose = this.targetPose;
+    for (let i = 0; i < this.particles.length; i += 1) {
+      const particle = this.particles[i];
+      if (this.dynamicPopulation && !(particle.activity > 0)) continue;
+      const dx = particle.x - this.targetCoordinate(pose, i * 3, 0);
+      const dy = particle.y - this.targetCoordinate(pose, i * 3, 1);
+      const error = Math.hypot(dx, dy);
+      total += error;
+      maximum = Math.max(maximum, error);
+      count += 1;
+    }
+    return { meanErrorPx: count ? total / count : null, maxErrorPx: count ? maximum : null,
+      limitedCount: this.lastTrackingLimitedCount };
+  }
+
   /** Show one exact target pose for visual review; normal physics resumes on play. */
   snapToTargetPose() {
     if (!this.targetPose) return false;
-    const { from, to, blend } = this.targetPose;
     for (let index = 0; index < this.particles.length; index += 1) {
       const offset = index * 3;
       const particle = this.particles[index];
-      const fromVisible = from[offset + 2] !== 0;
-      const toVisible = to[offset + 2] !== 0;
-      const firstX = fromVisible ? from[offset] : to[offset];
-      const firstY = fromVisible ? from[offset + 1] : to[offset + 1];
-      const finalX = toVisible ? to[offset] : from[offset];
-      const finalY = toVisible ? to[offset + 1] : from[offset + 1];
-      particle.x = this.originX + firstX + (finalX - firstX) * blend;
-      particle.y = this.originY + firstY + (finalY - firstY) * blend;
+      particle.x = this.targetCoordinate(this.targetPose, offset, 0);
+      particle.y = this.targetCoordinate(this.targetPose, offset, 1);
+      particle.animationAnchorX = particle.x;
+      particle.animationAnchorY = particle.y;
       particle.vx = 0;
       particle.vy = 0;
     }
+    this.lastTrackingLimitedCount = 0;
     // Inspect the reference pose, not a residual hit/reveal or automatic blink.
     this.mode = 'idle';
     this.modeTime = 0;
@@ -264,6 +307,13 @@ class ParticleWorld {
       }
     }
     this.targetPose = pose;
+    if (!pose) {
+      this.lastTrackingLimitedCount = 0;
+      for (const particle of this.allParticles) {
+        particle.animationAnchorX = null;
+        particle.animationAnchorY = null;
+      }
+    }
     if (!this.dynamicPopulation) return;
     if (!pose) {
       this.visibleParticleCount = this.sourceParticleCount;
@@ -280,12 +330,19 @@ class ParticleWorld {
       const toVisible = to[offset + 2] !== 0 ? 1 : 0;
       const activity = fromVisible + (toVisible - fromVisible) * blend;
       const particle = this.particles[index];
-      if (activity > 0 && (particle.activity ?? 0) === 0 && fromVisible === 0) {
-        // A newly activated particle appears near the desired pixel, not at a stale home.
-        particle.x = this.originX + to[offset];
-        particle.y = this.originY + to[offset + 1];
+      if (activity > 0 && (particle.activity ?? 0) === 0 &&
+          (fromVisible === 0 || this.animationTracking === 'decoupled')) {
+        // A newly visible identity has no visible previous trajectory to preserve.
+        particle.x = this.targetCoordinate(pose, offset, 0);
+        particle.y = this.targetCoordinate(pose, offset, 1);
         particle.vx = 0;
         particle.vy = 0;
+        particle.animationAnchorX = particle.x;
+        particle.animationAnchorY = particle.y;
+      }
+      if (activity <= 0) {
+        particle.animationAnchorX = null;
+        particle.animationAnchorY = null;
       }
       particle.activity = activity;
       if (activity > 0) visible += 1;
@@ -472,6 +529,42 @@ class ParticleWorld {
     return Math.sin(progress * Math.PI) ** 2;
   }
 
+  /** Integrate only the displacement relative to the animation anchor.
+   * Motion of the anchor itself adds no physical velocity or spring lag.
+   */
+  stepDecoupledParticle(particle, index, pose, dt) {
+    const targetX = this.targetCoordinate(pose, index * 3, 0);
+    const targetY = this.targetCoordinate(pose, index * 3, 1);
+    const anchorX = particle.animationAnchorX ?? particle.x;
+    const anchorY = particle.animationAnchorY ?? particle.y;
+    const offsetX = particle.x - anchorX;
+    const offsetY = particle.y - anchorY;
+    const material = particle.material;
+    const recovery = this.getRecoveryFactor();
+    const spring = this.stiffness * (material?.spring ?? 1) * (1 + 2 * recovery);
+    const damping = Math.exp(-this.damping * (material?.damping ?? 1) * dt);
+    particle.vx = (particle.vx - offsetX * spring * dt) * damping;
+    particle.vy = (particle.vy - offsetY * spring * dt) * damping;
+    particle.x = targetX + offsetX + particle.vx * dt;
+    particle.y = targetY + offsetY + particle.vy * dt;
+    particle.animationAnchorX = targetX;
+    particle.animationAnchorY = targetY;
+  }
+
+  /** Preserve the existing visible-identity travel bound during animation playback. */
+  limitTargetTravel(particle, previousX, previousY, maxDistance) {
+    const dx = particle.x - previousX;
+    const dy = particle.y - previousY;
+    const squared = dx * dx + dy * dy;
+    if (squared <= maxDistance * maxDistance) return;
+    const fraction = maxDistance / Math.sqrt(squared);
+    particle.x = previousX + dx * fraction;
+    particle.y = previousY + dy * fraction;
+    particle.vx *= fraction;
+    particle.vy *= fraction;
+    this.lastTrackingLimitedCount += 1;
+  }
+
   step(deltaSeconds) {
     if (!Number.isFinite(deltaSeconds) || deltaSeconds < 0) {
       throw new RangeError('Le pas de simulation doit être positif et fini.');
@@ -507,7 +600,7 @@ class ParticleWorld {
 
     const pose = this.targetPose;
     const maxPoseTravel = MAX_TARGET_POSE_SPEED * dt;
-    const maxPoseTravelSquared = maxPoseTravel * maxPoseTravel;
+    this.lastTrackingLimitedCount = 0;
     // The reference pose directs the movement; cohesion is still present but
     // must not pull the animated silhouette back toward the static source.
     const cohesionScale = pose ? 0 : 1; // Reference frames already encode the silhouette.
@@ -518,6 +611,11 @@ class ParticleWorld {
       if (this.dynamicPopulation && (particle.activity ?? 0) <= 0) continue;
       const previousX = particle.x;
       const previousY = particle.y;
+      if (pose && this.animationTracking === 'decoupled') {
+        this.stepDecoupledParticle(particle, index, pose, dt);
+        if (this.mode === 'idle') this.limitTargetTravel(particle, previousX, previousY, maxPoseTravel);
+        continue;
+      }
       const material = particle.material;
       const wave = material?.wave ?? 1;
       const breath = material?.breath ?? 1;
@@ -536,19 +634,9 @@ class ParticleWorld {
       let targetY = particle.homeY + levitation + waveY + floatY + blinkY - agitation * 0.5 +
         (particle.homeY - centerY) * breathe * breath;
       if (pose) {
-        const offset = index * 3;
-        const blend = pose.blend;
-        const fromVisible = pose.from[offset + 2] !== 0;
-        const toVisible = pose.to[offset + 2] !== 0;
-        const fromX = fromVisible ? pose.from[offset] : pose.to[offset];
-        const fromY = fromVisible ? pose.from[offset + 1] : pose.to[offset + 1];
-        const toX = toVisible ? pose.to[offset] : pose.from[offset];
-        const toY = toVisible ? pose.to[offset + 1] : pose.from[offset + 1];
-        const x = fromX + (toX - fromX) * blend;
-        const y = fromY + (toY - fromY) * blend;
         // Track the reference, without a second procedural animation on top.
-        targetX = this.originX + x;
-        targetY = this.originY + y;
+        targetX = this.targetCoordinate(pose, index * 3, 0);
+        targetY = this.targetCoordinate(pose, index * 3, 1);
       }
       const spring = pose ? Math.max(90, this.stiffness * 3) * (material?.spring ?? 1) :
         this.stiffness * (material?.spring ?? 1);
@@ -570,18 +658,7 @@ class ParticleWorld {
         particle.vy *= 1 - follow;
       }
       if (pose && this.mode === 'idle') {
-        const stepX = particle.x - previousX;
-        const stepY = particle.y - previousY;
-        const distanceSquared = stepX * stepX + stepY * stepY;
-        if (distanceSquared > maxPoseTravelSquared) {
-          // Bad offline correspondences must not teleport a persistent visible identity.
-          // Limiting physical travel preserves continuity; the target is still followed on later steps.
-          const fraction = maxPoseTravel / Math.sqrt(distanceSquared);
-          particle.x = previousX + stepX * fraction;
-          particle.y = previousY + stepY * fraction;
-          particle.vx *= fraction;
-          particle.vy *= fraction;
-        }
+        this.limitTargetTravel(particle, previousX, previousY, maxPoseTravel);
       }
     }
   }
