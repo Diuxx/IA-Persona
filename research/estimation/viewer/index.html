@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>IA-Persona — Estimation V2</title>
+  <link rel="stylesheet" href="viewer.css">
+  <script defer src="data.js"></script>
+  <script defer src="viewer.js"></script>
+</head>
+<body>
+  <main>
+    <h1>Motion Lab — Estimation V2</h1>
+    <p id="clip-name">Comparaison hors moteur, sans ressorts ni filtre visuel.</p>
+    <div class="controls">
+      <label>Échantillonnage <select id="stride"><option value="2">1 sur 2</option><option value="3">1 sur 3</option><option value="4">1 sur 4</option></select></label>
+      <button id="play" type="button">Lire</button>
+      <label>Pose <input id="frame" type="range" min="1" value="2"></label>
+      <output id="status"></output>
+    </div>
+    <div class="grid">
+      <section><h2>Original</h2><canvas id="reference"></canvas><p>Référence, non fournie si masquée.</p></section>
+      <section><h2>Linéaire</h2><canvas id="linear"></canvas><p id="linear-score"></p></section>
+      <section><h2>Cubique</h2><canvas id="cubic"></canvas><p id="cubic-score"></p></section>
+      <section><h2>Champ vectoriel</h2><canvas id="field"></canvas><p id="field-score"></p></section>
+      <section><h2>Appariement guidé</h2><canvas id="guided_linear"></canvas><p id="guided_linear-score"></p></section>
+      <section><h2>Flux bidirectionnel</h2><canvas id="guided_flow"></canvas><p id="guided_flow-score"></p></section>
+    </div>
+    <p id="summary"></p>
+    <p>IoU = recouvrement des silhouettes (100 % : identiques). Les scores moyens portent seulement sur les poses masquées.</p>
+  </main>
+</body>
+</html>

@@ -78,3 +78,7 @@ séparée.
 ## Reconstruction V1
 
 Voir [le banc de comparaison des poses masquées](reconstruction/README.md).
+
+## Motion Estimation V2
+
+Voir [l'expérience de flux optique sur idle, left et right](estimation/README.md).
