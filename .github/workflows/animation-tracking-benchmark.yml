@@ -1,0 +1,47 @@
+name: Animation tracking comparison
+
+on:
+  push:
+    branches:
+      - feature/animation-physics-decoupling
+    paths:
+      - 'src/**'
+      - 'index.html'
+      - 'tools/compare_animation_tracking.cjs'
+      - 'tools/verify_animation_tracking_browser.py'
+      - '.github/workflows/animation-tracking-benchmark.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: mkdir -p tracking-diagnostics
+      - run: node tools/compare_animation_tracking.cjs | tee tracking-diagnostics/report.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tracking-benchmark
+          path: tracking-diagnostics/report.json
+          if-no-files-found: error
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install playwright
+      - run: python -m playwright install --with-deps chromium
+      - run: python tools/verify_animation_tracking_browser.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tracking-browser-comparison
+          path: tracking-diagnostics/*.png
+          if-no-files-found: error

@@ -106,6 +106,15 @@ retour à l’idle. La suite GitHub Actions du 19 novembre 2026 a validé **139 
 ([résultat](https://github.com/Diuxx/IA-Persona/actions/runs/44718779686/job/136228832873)).
 La validation du rendu et des FPS en navigateur reste nécessaire.
 
+## Expérience : suivi animation / physique découplés
+
+Le sélecteur « Suivi des particules » compare la physique historique (par défaut)
+au suivi découplé. Dans ce dernier, la trajectoire cible est l'ancre mobile ;
+les impacts et champs de force déplacent les particules relativement à cette ancre.
+La limite de déplacement visible reste active pendant la lecture normale.
+Les diagnostics de Réglages indiquent les écarts et les points bridés.
+Voir [la note de décision](docs/decisions/animation-physics-decoupling.md).
+
 ## Interactions
 
 - **Révéler** : les points colorés apparaissent dispersés, puis retrouvent leur forme et leurs couleurs d'origine.

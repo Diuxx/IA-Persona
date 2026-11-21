@@ -78,6 +78,14 @@
 <button class="secondary" id="idle-resume" type="button">Reprendre</button>
 </div>
 <div class="control-group">
+<label for="animation-tracking"><span>Suivi des particules</span></label>
+<select id="animation-tracking">
+<option value="legacy" selected>Physique historique</option>
+<option value="decoupled">Animation + physique découplées (essai)</option>
+</select>
+<p class="frame-inspector-note">Le mode découplé suit directement la trajectoire cible, sauf limite anti-téléportation ou réaction physique. Compare à vitesse et densité identiques.</p>
+</div>
+<div class="control-group">
 <label for="idle-speed"><span>Vitesse du mouvement</span><output for="idle-speed" id="idle-speed-value">1×</output></label>
 <input id="idle-speed" type="range" min="0.25" max="3" step="0.25" value="1"/>
 </div>
@@ -151,6 +159,9 @@
 <span>Simulation <strong id="simulation-ms">—</strong> ms</span>
 <span>Rendu <strong id="rendering-ms">—</strong> ms</span>
 <span>Collisions <strong id="collision-count">—</strong></span>
+<span>Écart cible moyen <strong id="tracking-error">—</strong> px</span>
+<span>Écart cible max. <strong id="tracking-max-error">—</strong> px</span>
+<span>Points bridés <strong id="tracking-limited">—</strong></span>
 <span>Liaisons <strong id="link-count">—</strong></span>
 </div>
             <p class="panel-help">Les rôles sont indépendants des matériaux. Les teintes de diagnostic et les effets manuels n’altèrent pas les couleurs des états.</p>

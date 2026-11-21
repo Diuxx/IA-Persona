@@ -36,6 +36,7 @@ const idleSpeedControl = document.querySelector('#idle-speed');
 const idleSpeedValue = document.querySelector('#idle-speed-value');
 const particleDensityControl = document.querySelector('#particle-density');
 const antiFlickerControl = document.querySelector('#anti-flicker');
+const trackingControl = document.querySelector('#animation-tracking');
 const idleFrameValue = document.querySelector('#idle-frame-value');
 const idleLoopEndControl = document.querySelector('#idle-loop-end');
 const idleLoopEndValue = document.querySelector('#idle-loop-end-value');
@@ -111,6 +112,7 @@ function updateStatus() {
 
 function syncApplicationControls() {
   refreshRoleLegend();
+  trackingControl.value = world.animationTracking;
   syncAnimationControls();
   linkCount.textContent = world.cohesionField.linkCount.toLocaleString('fr-FR');
   updateStatus();
@@ -196,8 +198,10 @@ function animate(timestamp) {
   const renderStart = performance.now();
   if (iterations > 0 || frameDirty) render(dt || FIXED_STEP);
   const renderEnd = performance.now();
-  metrics.recordFrame(timestamp, renderStart - simulationStart,
-    renderEnd - renderStart, world.lastCollisionCount);
+  if (metrics.recordFrame(timestamp, renderStart - simulationStart,
+    renderEnd - renderStart, world.lastCollisionCount)) {
+    metrics.updateTracking(world.getTrackingDiagnostics());
+  }
   updateStatus();
   syncAnimationControls();
 
@@ -267,6 +271,9 @@ idleResumeButton.addEventListener('click', () => {
 idleSpeedControl.addEventListener('input', () => {
   controller.dispatch({ type: 'animation', action: 'speed', value: Number(idleSpeedControl.value) });
   syncAnimationControls();
+});
+trackingControl.addEventListener('change', () => {
+  window.persona.dispatch({ type: 'animation', action: 'tracking', value: trackingControl.value });
 });
 antiFlickerControl.addEventListener('change', () => {
   pixelStabilizer.reset();
@@ -357,6 +364,7 @@ window.persona = Object.freeze({
     if (accepted) {
       frameDirty = true;
       pixelStabilizer.reset();
+      if (command.type === 'animation' && command.action === 'tracking') metrics.resetSampling();
       particleDensityControl.value = world.densityLimit === null ? 'auto' : String(world.densityLimit);
     }
     syncApplicationControls();
