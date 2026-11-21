@@ -1,0 +1,39 @@
+name: Motion Reconstruction V1
+
+on:
+  push:
+    branches:
+      - research/motion-reconstruction-v1
+    paths:
+      - research/**
+      - .github/workflows/motion-reconstruction.yml
+      - tools/motion_analysis/decoder.cjs
+      - assets/animations/idle-targets.js
+      - assets/persona-map.js
+      - assets/persona-anatomy.js
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r research/requirements.txt
+      - run: node --test tests/*.test.cjs
+      - run: python -m unittest discover -s research/tests -v
+      - run: node --check research/reconstruction/viewer/viewer.js
+      - run: python research/reconstruct.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: idle-motion-reconstruction
+          path: research/output/reconstruction/
+          if-no-files-found: error

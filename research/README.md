@@ -74,3 +74,7 @@ physique. Une seule boucle ne suffit pas pour apprendre un style généralisable
 Pas de réseau neuronal, serveur, modification du runtime ni changement de
 docs/PROJECT.md. Toute intégration ultérieure fera l'objet d'une décision
 séparée.
+
+## Reconstruction V1
+
+Voir [le banc de comparaison des poses masquées](reconstruction/README.md).
