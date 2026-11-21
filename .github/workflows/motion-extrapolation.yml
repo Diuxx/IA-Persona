@@ -1,0 +1,57 @@
+name: Motion Extrapolation V1
+
+on:
+  push:
+    branches:
+      - research/motion-extrapolation-v1
+    paths:
+      - research/**
+      - .github/workflows/motion-extrapolation.yml
+      - assets/animations/*-targets.js
+      - assets/persona-map.js
+      - assets/persona-anatomy.js
+      - src/engine/**
+      - src/animation/target-animation-codec.js
+      - tools/motion_analysis/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r research/requirements.txt
+      - run: node --test tests/*.test.cjs
+      - run: python -m unittest discover -s research/tests -v
+      - run: node --check research/extrapolation/viewer/viewer.js
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        clip: [idle, left, right]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r research/requirements.txt
+      - run: python research/extrapolate.py --clip ${{ matrix.clip }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: motion-extrapolation-${{ matrix.clip }}
+          path: research/output/extrapolation/${{ matrix.clip }}/
+          if-no-files-found: error

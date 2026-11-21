@@ -86,3 +86,7 @@ Voir [l'expérience de flux optique sur idle, left et right](estimation/README.m
 ## Optimal Transport V1
 
 Voir [le transport partiel et la cohérence temporelle](transport/README.md).
+
+## Motion Extrapolation V1
+
+Voir [la prédiction chronologique des poses futures](extrapolation/README.md).
