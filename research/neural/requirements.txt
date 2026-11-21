@@ -1,0 +1,2 @@
+# Optional research-only dependency. Install from the official CPU wheel index.
+torch>=2.6,<3

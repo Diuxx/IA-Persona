@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>IA-Persona — Neural Motion V1</title>
+  <link rel="stylesheet" href="viewer.css">
+  <script defer src="data.js"></script>
+  <script defer src="viewer.js"></script>
+</head>
+<body><main>
+  <h1>Motion Lab — Neural Motion V1</h1>
+  <p id="clip">Prévision neuronale de poses, hors moteur et sans identité physique.</p>
+  <div class="controls">
+    <label>Dernière pose connue <select id="origin"></select></label>
+    <label>Temps relatif <input id="step" type="range" min="-4" max="8" value="1"></label>
+    <button id="play" type="button">Lire</button>
+    <label><input id="reveal" type="checkbox" checked> Montrer le futur réel</label>
+    <output id="status" aria-live="polite"></output>
+  </div>
+  <p id="context"></p>
+  <div id="views" class="grid"></div>
+  <h2>Scores moyens par horizon — fenêtres du split indiqué</h2>
+  <div class="table-wrap"><table id="summary"></table></div>
+  <p>IoU : recouvrement de silhouette (100 % = identique). Les scores ne mesurent
+    pas une identité physique de chaque pixel. Les vues sont rasterisées, sans simulation.</p>
+</main></body>
+</html>
