@@ -94,3 +94,7 @@ Voir [la prédiction chronologique des poses futures](extrapolation/README.md).
 ## Motion Dataset V1
 
 Voir [le corpus versionné et le lecteur de fenêtres causales](dataset/README.md).
+
+## Neural Motion V1
+
+Voir [le premier prédicteur neuronal hors moteur](neural/README.md).

@@ -1,0 +1,63 @@
+name: Neural Motion V1
+
+on:
+  push:
+    branches:
+      - research/neural-motion-v1
+    paths:
+      - research/**
+      - .github/workflows/neural-motion.yml
+      - assets/animations/*-targets.js
+      - assets/persona-map.js
+      - assets/persona-anatomy.js
+      - src/engine/**
+      - src/animation/target-animation-codec.js
+      - tools/motion_analysis/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r research/requirements.txt
+      - run: python -m pip install -r research/neural/requirements.txt --index-url https://download.pytorch.org/whl/cpu
+      - run: node --test tests/*.test.cjs
+      - run: python -m unittest discover -s research/tests -v
+      - run: python -m unittest discover -s research/neural/tests -v
+      - run: node --check research/neural/viewer/viewer.js
+      - run: python research/build_dataset.py
+      - run: python research/train_neural.py
+      - name: Verify checkpoint
+        env:
+          PYTHONPATH: research
+        run: |
+          python - <<'PY'
+          from dataset.reader import MotionDataset
+          from neural.checkpoint import load_model
+          from neural.model import predict, INPUT_KEYS
+          import torch
+          torch.set_num_threads(2)
+          model, metadata = load_model("research/output/neural")
+          sample = MotionDataset("research/output/dataset", "development")[0]
+          observed = {key: torch.from_numpy(sample["inputs"][key])[None] for key in INPUT_KEYS}
+          result = predict(model, observed)
+          assert result.shape == (1, 8, 400, 400)
+          assert result.dtype == torch.uint8
+          print("Checkpoint verified:", metadata["parameters"], "parameters")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: neural-motion-v1
+          path: research/output/neural/
+          if-no-files-found: error
